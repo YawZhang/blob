@@ -10,8 +10,9 @@ layout: default
       {% assign id_parts = chunk | split: 'id="' %}
       {% if id_parts.size > 1 %}
         {% assign heading_id = id_parts[1] | split: '"' | first %}
-        {% assign heading_parts = chunk | split: '>' %}
-        {% assign heading_title = heading_parts[1] | split: '</h' | first | strip_html | strip %}
+        {% assign heading_html = chunk | split: '</h' | first %}
+        {% assign heading_open = heading_html | split: '>' | first | append: '>' %}
+        {% assign heading_title = heading_html | remove_first: heading_open | strip_html | strip %}
         {% if heading_id and heading_title != '' %}
           <li class="toc-h{{ level }}"><a href="#{{ heading_id }}">{{ heading_title }}</a></li>
         {% endif %}
