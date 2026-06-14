@@ -2,12 +2,33 @@
 layout: default
 ---
 
+{% assign heading_chunks = content | split: '<h' %}
+{% capture toc_items %}
+  {% for chunk in heading_chunks %}
+    {% assign level = chunk | slice: 0 %}
+    {% if level == '2' or level == '3' %}
+      {% assign id_parts = chunk | split: 'id="' %}
+      {% if id_parts.size > 1 %}
+        {% assign heading_id = id_parts[1] | split: '"' | first %}
+        {% assign heading_parts = chunk | split: '>' %}
+        {% assign heading_title = heading_parts[1] | split: '</h' | first | strip_html | strip %}
+        {% if heading_id and heading_title != '' %}
+          <li class="toc-h{{ level }}"><a href="#{{ heading_id }}">{{ heading_title }}</a></li>
+        {% endif %}
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+{% endcapture %}
+{% assign toc_items = toc_items | strip %}
+
 <main class="post-page">
   <div class="post-shell">
-    <aside class="toc toc-desktop" data-toc aria-label="文章目录">
-      <p class="toc-title">目录</p>
-      <ol data-toc-list></ol>
-    </aside>
+    {% if toc_items != '' %}
+      <aside class="toc toc-desktop" aria-label="文章目录">
+        <p class="toc-title">目录</p>
+        <ol>{{ toc_items }}</ol>
+      </aside>
+    {% endif %}
 
   <article class="article">
     <div class="article-meta">
@@ -18,12 +39,14 @@ layout: default
     <h1>{{ page.title }}</h1>
     <p class="summary">{{ page.description }}</p>
 
-    <details class="toc-mobile">
-      <summary>目录</summary>
-      <div class="toc" data-mobile-toc>
-        <ol data-mobile-toc-list></ol>
-      </div>
-    </details>
+    {% if toc_items != '' %}
+      <details class="toc-mobile">
+        <summary>目录</summary>
+        <div class="toc">
+          <ol>{{ toc_items }}</ol>
+        </div>
+      </details>
+    {% endif %}
 
     <div class="article-body">
       {{ content }}
@@ -31,46 +54,3 @@ layout: default
   </article>
   </div>
 </main>
-
-<script>
-  (function () {
-    var body = document.querySelector(".article-body");
-    var desktopList = document.querySelector("[data-toc-list]");
-    var mobileList = document.querySelector("[data-mobile-toc-list]");
-    var desktopToc = document.querySelector("[data-toc]");
-    var mobileToc = document.querySelector(".toc-mobile");
-
-    if (!body || !desktopList || !mobileList) return;
-
-    var headings = Array.prototype.slice.call(body.querySelectorAll("h2, h3"));
-    if (!headings.length) {
-      if (desktopToc) desktopToc.hidden = true;
-      if (mobileToc) mobileToc.hidden = true;
-      return;
-    }
-
-    headings.forEach(function (heading, index) {
-      if (!heading.id) {
-        heading.id = "section-" + (index + 1);
-      }
-
-      [desktopList, mobileList].forEach(function (list) {
-        var item = document.createElement("li");
-        var link = document.createElement("a");
-        item.className = "toc-" + heading.tagName.toLowerCase();
-        link.href = "#" + heading.id;
-        link.textContent = heading.textContent;
-        item.appendChild(link);
-        list.appendChild(item);
-      });
-    });
-
-    var links = Array.prototype.slice.call(document.querySelectorAll(".toc a"));
-    links.forEach(function (link) {
-      link.addEventListener("click", function () {
-        links.forEach(function (item) { item.classList.remove("active"); });
-        link.classList.add("active");
-      });
-    });
-  })();
-</script>
