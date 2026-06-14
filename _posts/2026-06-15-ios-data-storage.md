@@ -240,7 +240,215 @@ if (savedVersion < currentVersion) {
 }
 ```
 
-## 11. 掌握标准
+## 11. 存储方案的工程选择
+
+存储方案不能只看 API 简单程度。要从数据特征判断：
+
+- 数据是否敏感。
+- 数据是否结构化。
+- 数据是否需要查询。
+- 数据是否需要跨版本迁移。
+- 数据量是否会持续增长。
+- 数据是否可以被系统清理。
+- 数据是否要随账号切换清理。
+
+```mermaid
+flowchart TD
+    A["Need to store data"] --> B{"Sensitive?"}
+    B -- "Yes" --> C["Keychain"]
+    B -- "No" --> D{"Structured and queryable?"}
+    D -- "Yes" --> E["SQLite / Core Data"]
+    D -- "No" --> F{"Large file?"}
+    F -- "Yes" --> G["File system"]
+    F -- "No" --> H{"Small preference?"}
+    H -- "Yes" --> I["NSUserDefaults"]
+    H -- "No" --> J["Cache file / custom store"]
+```
+
+这个判断比“NSUserDefaults 能不能存数组”更重要。能存不代表适合存。
+
+## 12. 账号隔离
+
+很多线上问题来自缓存没有按账号隔离。用户 A 退出登录，用户 B 登录后看到了 A 的缓存数据，这不是 UI 问题，而是存储设计问题。
+
+推荐把账号维度放进存储路径或缓存 key：
+
+```objc
+- (NSString *)cacheDirectoryForUserId:(NSString *)userId {
+    NSString *caches = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES).firstObject;
+    NSString *safeUserId = userId.length > 0 ? userId : @"anonymous";
+    return [caches stringByAppendingPathComponent:safeUserId];
+}
+```
+
+接口缓存 key 也应该包含用户维度：
+
+```objc
+- (NSString *)cacheKeyWithUserId:(NSString *)userId path:(NSString *)path parameters:(NSDictionary<NSString *, id> *)parameters {
+    NSData *data = [NSJSONSerialization dataWithJSONObject:parameters ?: @{}
+                                                   options:NSJSONWritingSortedKeys
+                                                     error:nil];
+    NSString *parameterText = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] ?: @"";
+    return [NSString stringWithFormat:@"%@|%@|%@", userId ?: @"anonymous", path, parameterText];
+}
+```
+
+退出登录时要清理用户相关缓存，但不一定清理全局配置，比如主题、语言、是否看过引导页。
+
+## 13. 文件写入的原子性和错误处理
+
+文件写入失败很常见：磁盘空间不足、路径不存在、权限问题、数据编码失败。
+
+不要忽略错误：
+
+```objc
+- (BOOL)saveData:(NSData *)data toFileName:(NSString *)fileName error:(NSError **)error {
+    NSString *documents = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+    NSString *directory = [documents stringByAppendingPathComponent:@"articles"];
+
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    if (![fileManager fileExistsAtPath:directory]) {
+        BOOL created = [fileManager createDirectoryAtPath:directory
+                              withIntermediateDirectories:YES
+                                               attributes:nil
+                                                    error:error];
+        if (!created) {
+            return NO;
+        }
+    }
+
+    NSString *path = [directory stringByAppendingPathComponent:fileName];
+    return [data writeToFile:path options:NSDataWritingAtomic error:error];
+}
+```
+
+`NSDataWritingAtomic` 会降低写坏文件的概率，但不能代替完整的错误处理。
+
+## 14. SQLite 迁移的真实问题
+
+SQLite 一旦发布，就要考虑版本升级。例如第一版表结构：
+
+```sql
+CREATE TABLE article (
+    id TEXT PRIMARY KEY,
+    title TEXT
+);
+```
+
+第二版需要增加摘要：
+
+```sql
+ALTER TABLE article ADD COLUMN summary TEXT DEFAULT '';
+```
+
+迁移要按版本顺序执行，而不是只判断当前版本：
+
+```objc
+- (void)migrateDatabaseIfNeeded {
+    NSInteger version = [self currentDatabaseVersion];
+
+    if (version < 2) {
+        [self executeSQL:@"ALTER TABLE article ADD COLUMN summary TEXT DEFAULT ''"];
+        version = 2;
+    }
+
+    if (version < 3) {
+        [self executeSQL:@"CREATE INDEX IF NOT EXISTS idx_article_time ON article(time)"];
+        version = 3;
+    }
+
+    [self saveDatabaseVersion:version];
+}
+```
+
+这样从 v1 升到 v3、从 v2 升到 v3 都能走正确路径。
+
+## 15. Core Data 的上下文边界
+
+Core Data 的核心难点不是创建实体，而是理解 `NSManagedObjectContext` 的线程边界。
+
+`NSManagedObject` 不能随意跨线程传递。更稳妥的方式是传 `objectID`，在目标 context 中重新获取对象。
+
+```objc
+NSManagedObjectID *objectID = article.objectID;
+
+[backgroundContext performBlock:^{
+    NSError *error = nil;
+    Article *backgroundArticle = [backgroundContext existingObjectWithID:objectID error:&error];
+    backgroundArticle.title = @"Updated";
+
+    [backgroundContext save:&error];
+}];
+```
+
+这类边界意识比会点 Xcode 的 Core Data Model 更重要。
+
+## 16. Keychain 的安全边界
+
+Keychain 适合保存凭证，但不代表绝对安全。它解决的是“不要把敏感数据放在普通文件或 UserDefaults 里”。
+
+Token 存储建议：
+
+- access token 放 Keychain。
+- refresh token 更应该放 Keychain。
+- 退出登录时清理对应凭证。
+- 不在日志中打印 token。
+- 不在崩溃上报自定义字段中上传 token。
+
+```objc
+- (void)logout {
+    [self.keychain deleteValueForKey:@"access_token"];
+    [self.keychain deleteValueForKey:@"refresh_token"];
+    [self.cacheStore removeUserScopedCache];
+}
+```
+
+安全问题常常不是加密算法不够强，而是敏感数据被日志、缓存、剪贴板、截图、上报链路泄露。
+
+## 17. 缓存失效策略
+
+缓存必须有失效策略。常见策略：
+
+- 时间过期：超过 TTL 重新请求。
+- 版本过期：App 或数据结构升级后清理。
+- 用户过期：退出登录后清理。
+- 容量过期：超过磁盘上限后按 LRU 清理。
+- 主动过期：发布、删除、编辑内容后清理相关缓存。
+
+简单 TTL 示例：
+
+```objc
+- (BOOL)isCacheValidWithTimestamp:(NSTimeInterval)timestamp maxAge:(NSTimeInterval)maxAge {
+    NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
+    return now - timestamp <= maxAge;
+}
+```
+
+没有失效策略的缓存不是优化，而是未来的数据一致性问题。
+
+## 18. Swift 混编提示
+
+Objective-C Model 给 Swift 使用时，要补充 Nullability 和泛型，否则 Swift 侧无法准确判断空值。
+
+```objc
+NS_ASSUME_NONNULL_BEGIN
+
+@interface YWArticle : NSObject
+
+@property (nonatomic, copy) NSString *articleId;
+@property (nonatomic, copy) NSString *title;
+@property (nonatomic, copy, nullable) NSString *summary;
+
+- (instancetype)initWithDictionary:(NSDictionary<NSString *, id> *)dictionary;
+
+@end
+
+NS_ASSUME_NONNULL_END
+```
+
+Swift 侧拿到的 `summary` 才会是 `String?`，而不是不安全的隐式可选。
+
+## 19. 掌握标准
 
 掌握数据存储，需要能做到：
 

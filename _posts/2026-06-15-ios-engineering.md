@@ -189,7 +189,193 @@ iOS App 必须经过签名才能安装到真机或发布。
 - 第三方 SDK 合规。
 - 崩溃和核心流程测试。
 
-## 12. 掌握标准
+## 12. 构建链路要从源码走到产物
+
+工程化的核心链路是：
+
+```mermaid
+flowchart TD
+    A["Source files"] --> B["Compile"]
+    B --> C["Object files"]
+    C --> D["Link"]
+    D --> E["App binary"]
+    F["Assets / Plist / Storyboard"] --> G["Bundle resources"]
+    E --> H[".app"]
+    G --> H
+    H --> I["Code Sign"]
+    I --> J["Archive / IPA"]
+```
+
+理解这条链路后，很多错误能快速归类：
+
+- 语法报错：编译阶段。
+- 找不到符号：链接阶段。
+- 图片找不到：资源打包阶段。
+- 真机安装失败：签名阶段。
+- 上传失败：归档或 App Store Connect 阶段。
+
+## 13. Build Settings 的排查方法
+
+Build Settings 不要靠记忆，要会查。
+
+常见排查路径：
+
+1. 确认当前选中的 Target。
+2. 确认当前 Scheme 使用的 Configuration。
+3. 搜索具体配置项。
+4. 看配置来自 project、target 还是 xcconfig。
+5. 检查 Debug 和 Release 是否不同。
+
+例如链接错误：
+
+```text
+Undefined symbols for architecture arm64
+```
+
+可能原因：
+
+- 源文件没有加入 Target Membership。
+- 静态库没有链接。
+- `Other Linker Flags` 缺少参数。
+- C++/Objective-C++ 混编没有正确处理。
+- 模拟器和真机架构不匹配。
+
+排查时先定位是“编译不到”还是“链接不到”。
+
+## 14. xcconfig
+
+当环境配置越来越多时，使用 `.xcconfig` 比在 Xcode UI 里手点更可控。
+
+示例：
+
+```text
+API_BASE_URL = https://api-dev.example.com
+PRODUCT_BUNDLE_IDENTIFIER = com.yawzhang.blog.dev
+```
+
+代码里可以通过 `Info.plist` 注入读取：
+
+```objc
+NSString *baseURL = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"APIBaseURL"];
+```
+
+好处：
+
+- 配置可版本管理。
+- Debug / Release 差异清楚。
+- CI 更容易覆盖。
+- 减少本地 Xcode 配置漂移。
+
+## 15. 依赖版本锁定
+
+依赖管理最怕“我这能跑，你那不能跑”。
+
+CocoaPods 的 `Podfile.lock` 必须提交。它锁定实际安装版本。
+
+```text
+Podfile      描述希望使用的依赖范围
+Podfile.lock 记录当前实际解析出的版本
+```
+
+日常协作优先使用：
+
+```bash
+pod install
+```
+
+谨慎使用：
+
+```bash
+pod update
+```
+
+`pod update` 会更新符合约束的依赖版本，可能引入行为变化。
+
+## 16. CI 构建
+
+CI 的价值是让构建不依赖某个人的电脑。
+
+基础 CI 应至少做：
+
+- 拉取代码。
+- 安装依赖。
+- 编译 Debug。
+- 编译 Release 或 Archive。
+- 跑单元测试。
+- 导出构建日志。
+
+常见失败原因：
+
+- 本地没提交资源文件。
+- 依赖版本未锁定。
+- 证书或 Profile 缺失。
+- 脚本依赖本机路径。
+- Build Settings 写了绝对路径。
+
+工程化成熟的一个标志：换一台干净机器也能按文档构建成功。
+
+## 17. 多环境配置
+
+开发、测试、预发、生产环境通常有不同：
+
+- Base URL。
+- Bundle ID。
+- App 名称。
+- 图标。
+- 推送环境。
+- 第三方 SDK Key。
+
+不要在代码中到处写：
+
+```objc
+// Bad
+NSString *url = @"https://api-dev.example.com";
+```
+
+应该集中配置：
+
+```objc
+@interface YWEnvironment : NSObject
+
+@property (nonatomic, copy, readonly) NSURL *baseURL;
+@property (nonatomic, assign, readonly, getter=isProduction) BOOL production;
+
++ (instancetype)currentEnvironment;
+
+@end
+```
+
+所有业务从环境对象读取配置。
+
+## 18. 发布前检查
+
+发布不是点 Archive。至少要确认：
+
+- 版本号和构建号递增。
+- Release 环境指向生产。
+- 推送证书和环境正确。
+- dSYM 已保留并上传。
+- 隐私权限文案完整。
+- 第三方 SDK 合规。
+- 核心路径已回归。
+- 灰度或 TestFlight 验证完成。
+
+线上排查依赖 dSYM，丢失 dSYM 等于丢失崩溃定位能力。
+
+## 19. Swift 混编提示
+
+混编工程里，工程化还要关注：
+
+- Swift 版本。
+- `Defines Module`。
+- Bridging Header 路径。
+- `ProjectName-Swift.h` 生成。
+- 模块之间是否循环依赖。
+- Swift Package 与 CocoaPods 同时存在时的构建顺序。
+
+Objective-C 引入 Swift 头文件时，不要在公共 `.h` 里随意 import `ProjectName-Swift.h`，容易造成循环依赖和编译膨胀。优先在 `.m` 中引入。
+
+## 20. 掌握标准
 
 掌握工程化，需要能做到：
 

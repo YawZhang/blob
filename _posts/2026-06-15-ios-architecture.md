@@ -259,7 +259,236 @@ UITableView 数据源拆分示例：
 
 这能让页面控制器少关心列表细节。
 
-## 10. 掌握标准
+## 10. 架构的核心是依赖方向
+
+架构不是文件夹名字，而是依赖方向。依赖方向混乱，项目就会变成到处互相调用。
+
+更健康的方向是：
+
+```mermaid
+flowchart TD
+    A["View"] --> B["ViewController"]
+    B --> C["ViewModel / Presenter"]
+    C --> D["Service"]
+    D --> E["Repository"]
+    E --> F["Network / Database"]
+    C --> G["Model"]
+    D --> G
+```
+
+上层可以依赖下层抽象，下层不应该反过来依赖具体页面。网络层不应该知道某个 ViewController，数据库层不应该弹 Toast。
+
+## 11. MVC 为什么容易变成 Massive View Controller
+
+UIKit 的 MVC 在工程里经常变形：
+
+- ViewController 创建 View。
+- ViewController 请求接口。
+- ViewController 解析 JSON。
+- ViewController 格式化文本。
+- ViewController 处理跳转。
+- ViewController 做埋点。
+- ViewController 处理缓存。
+
+结果是一个页面几千行，任何小改动都要读半天。
+
+拆分原则：
+
+- 视图结构归 View。
+- 业务请求归 Service。
+- 展示状态归 ViewModel。
+- 路由跳转归 Router。
+- 持久化归 Repository 或 Store。
+- 跨业务能力归 Manager，但 Manager 不能变成万能工具箱。
+
+## 12. Repository 层
+
+Service 偏业务动作，Repository 偏数据来源。它可以决定从网络、缓存还是数据库读取。
+
+```objc
+NS_ASSUME_NONNULL_BEGIN
+
+@interface YWArticleRepository : NSObject
+
+- (void)loadArticlesWithCompletion:(void (^)(NSArray<YWArticle *> * _Nullable articles,
+                                             NSError * _Nullable error))completion;
+
+@end
+
+NS_ASSUME_NONNULL_END
+```
+
+实现可以先读缓存，再请求网络：
+
+```objc
+- (void)loadArticlesWithCompletion:(void (^)(NSArray<YWArticle *> * _Nullable, NSError * _Nullable))completion {
+    NSArray<YWArticle *> *cachedArticles = [self.cacheStore cachedArticles];
+    if (cachedArticles.count > 0) {
+        completion(cachedArticles, nil);
+    }
+
+    [self.apiClient fetchArticlesWithCompletion:^(NSArray<YWArticle *> * _Nullable articles, NSError * _Nullable error) {
+        if (articles.count > 0) {
+            [self.cacheStore saveArticles:articles];
+        }
+        completion(articles, error);
+    }];
+}
+```
+
+页面不需要知道数据来自缓存还是网络，这就是 Repository 的价值。
+
+## 13. ViewModel 不只是格式化
+
+ViewModel 可以承担页面状态。
+
+```objc
+typedef NS_ENUM(NSInteger, YWArticleListState) {
+    YWArticleListStateIdle,
+    YWArticleListStateLoading,
+    YWArticleListStateContent,
+    YWArticleListStateEmpty,
+    YWArticleListStateError
+};
+
+@interface YWArticleListViewModel : NSObject
+
+@property (nonatomic, assign, readonly) YWArticleListState state;
+@property (nonatomic, copy, readonly) NSArray<YWArticleCellViewModel *> *cellViewModels;
+
+- (void)reloadWithCompletion:(void (^)(void))completion;
+
+@end
+```
+
+页面根据状态渲染：
+
+```objc
+- (void)render {
+    switch (self.viewModel.state) {
+        case YWArticleListStateLoading:
+            [self showLoadingView];
+            break;
+        case YWArticleListStateContent:
+            [self.tableView reloadData];
+            break;
+        case YWArticleListStateEmpty:
+            [self showEmptyView];
+            break;
+        case YWArticleListStateError:
+            [self showErrorView];
+            break;
+        default:
+            break;
+    }
+}
+```
+
+这样状态变化有明确入口，而不是散落在多个回调里。
+
+## 14. Router 的边界
+
+Router 可以集中跳转，但不要把业务判断全部塞进 Router。Router 应该处理页面创建和导航动作，业务条件仍应在业务层判断。
+
+```objc
+@interface YWAppRouter : NSObject
+
++ (void)openArticleDetailFrom:(UIViewController *)source articleId:(NSString *)articleId;
+
+@end
+```
+
+```objc
++ (void)openArticleDetailFrom:(UIViewController *)source articleId:(NSString *)articleId {
+    if (articleId.length == 0) {
+        return;
+    }
+
+    YWArticleDetailViewController *controller = [[YWArticleDetailViewController alloc] initWithArticleId:articleId];
+    [source.navigationController pushViewController:controller animated:YES];
+}
+```
+
+Router 可以防御非法参数，但不应该决定“用户是否有权限看文章”这种业务规则。
+
+## 15. 模块通信
+
+模块之间不要互相 import 具体实现。常见方式：
+
+- 通过协议暴露能力。
+- 通过 Router 统一跳转。
+- 通过事件通知状态变化。
+- 通过依赖注入传入服务。
+
+协议示例：
+
+```objc
+@protocol YWLoginServiceProtocol <NSObject>
+
+- (BOOL)isLoggedIn;
+- (void)requireLoginFrom:(UIViewController *)source completion:(void (^)(BOOL success))completion;
+
+@end
+```
+
+业务模块依赖协议，而不是依赖具体登录模块类。
+
+## 16. 可测试性
+
+架构拆分的一个直接收益是可测试。
+
+如果 ViewModel 依赖协议，就可以在测试中传入假数据：
+
+```objc
+@interface YWMockArticleRepository : NSObject
+
+@property (nonatomic, copy) NSArray<YWArticle *> *stubArticles;
+
+@end
+```
+
+```objc
+- (void)loadArticlesWithCompletion:(void (^)(NSArray<YWArticle *> *, NSError *))completion {
+    completion(self.stubArticles, nil);
+}
+```
+
+如果所有逻辑都写在 ViewController 里，测试就必须启动页面、模拟生命周期、处理 UI 依赖，成本会高很多。
+
+## 17. 架构演进不要一步到位
+
+小项目不需要一开始就上复杂分层。更实际的演进路径：
+
+1. 先把 ViewController 中的 View 拆出去。
+2. 再把网络请求拆到 Service。
+3. 再把数据来源整合到 Repository。
+4. 页面状态复杂后引入 ViewModel。
+5. 页面跳转复杂后引入 Router。
+6. 模块变多后再做组件化边界。
+
+架构是为复杂度付费。复杂度没到时，过度设计也是成本。
+
+## 18. Swift 混编提示
+
+混编项目中，架构边界比语言边界更重要。
+
+- Objective-C 基础库可以被 Swift 调用，但要补 Nullability。
+- Swift 新模块暴露给 Objective-C 时，用 Facade 包一层。
+- 不要让 Objective-C 页面直接依赖大量 Swift 内部类型。
+- 公共协议要使用两边都容易理解的类型。
+
+```swift
+@objcMembers
+final class YWArticleModuleFacade: NSObject {
+    static func makeArticleListViewController() -> UIViewController {
+        return ArticleListViewController()
+    }
+}
+```
+
+Objective-C 只拿 `UIViewController`，不需要理解 Swift 模块内部结构。
+
+## 19. 掌握标准
 
 掌握架构，需要能做到：
 

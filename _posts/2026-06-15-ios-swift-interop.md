@@ -241,7 +241,220 @@ class YWUserDTO: NSObject {
 
 排查时先确认方向：是 Swift 调 Objective-C，还是 Objective-C 调 Swift。方向不同，入口文件不同。
 
-## 11. 掌握标准
+## 11. 混编的方向必须先分清
+
+混编问题先判断方向：
+
+```mermaid
+flowchart TD
+    A["Need interop"] --> B{"Call direction?"}
+    B -- "Swift calls Objective-C" --> C["Bridging Header"]
+    B -- "Objective-C calls Swift" --> D["ProjectName-Swift.h"]
+    C --> E["Import Objective-C .h"]
+    D --> F["@objc / NSObject visible API"]
+```
+
+方向不同，入口完全不同。很多“找不到类”的问题都是方向判断错了。
+
+## 12. Objective-C API 如何对 Swift 友好
+
+Swift 不是简单把 Objective-C 方法翻译过去。Objective-C API 写得好不好，会直接影响 Swift 调用体验。
+
+### Nullability
+
+```objc
+NS_ASSUME_NONNULL_BEGIN
+
+@interface YWUserService : NSObject
+
+- (void)loadUserWithId:(NSString *)userId
+            completion:(void (^)(YWUser * _Nullable user,
+                                 NSError * _Nullable error))completion;
+
+@end
+
+NS_ASSUME_NONNULL_END
+```
+
+Swift 侧：
+
+```swift
+service.loadUser(withId: "1001") { user, error in
+    guard let user else {
+        print(error as Any)
+        return
+    }
+
+    print(user.name)
+}
+```
+
+如果不标注，Swift 会得到隐式可选，编译器无法充分保护调用方。
+
+### Lightweight Generics
+
+```objc
+@property (nonatomic, copy) NSArray<YWArticle *> *articles;
+```
+
+Swift 侧会更接近 `[YWArticle]`，减少手动转换。
+
+### 命名
+
+Objective-C 方法名要能自然导入 Swift。
+
+```objc
+- (void)fetchArticlesWithPage:(NSInteger)page
+                   completion:(void (^)(NSArray<YWArticle *> *articles))completion
+NS_SWIFT_NAME(fetchArticles(page:completion:));
+```
+
+公共 API 要同时考虑两种语言的调用者。
+
+## 13. Swift 暴露给 Objective-C 的限制
+
+Objective-C 不能理解所有 Swift 特性。
+
+通常不能直接暴露：
+
+- 纯 Swift struct。
+- 带关联值的 enum。
+- Swift 泛型类型。
+- Swift protocol with associated type。
+- async 方法直接给 Objective-C 调用。
+
+需要包装：
+
+```swift
+struct Article {
+    let id: String
+    let title: String
+}
+
+@objcMembers
+final class YWArticleDTO: NSObject {
+    let articleId: String
+    let title: String
+
+    init(article: Article) {
+        self.articleId = article.id
+        self.title = article.title
+    }
+}
+```
+
+Objective-C 调的是 DTO，不需要理解 Swift struct。
+
+## 14. async/await 与 Objective-C 回调
+
+Swift async 方法不能直接当成普通 Objective-C 方法调用。可以提供桥接 Facade。
+
+```swift
+@objcMembers
+final class YWArticleSwiftFacade: NSObject {
+    func loadArticles(completion: @escaping ([YWArticleDTO]?, NSError?) -> Void) {
+        Task {
+            do {
+                let articles = try await ArticleService().loadArticles()
+                let dtos = articles.map { YWArticleDTO(article: $0) }
+                await MainActor.run {
+                    completion(dtos, nil)
+                }
+            } catch {
+                await MainActor.run {
+                    completion(nil, error as NSError)
+                }
+            }
+        }
+    }
+}
+```
+
+这里明确把 Swift async 转成 Objective-C 能理解的 completion，并保证回调回到主线程。
+
+## 15. Block 和 Closure 的生命周期
+
+Objective-C Block 与 Swift closure 桥接时，循环引用仍然存在。
+
+Objective-C：
+
+```objc
+@property (nonatomic, copy, nullable) void (^completion)(void);
+```
+
+Swift：
+
+```swift
+object.completion = { [weak self] in
+    guard let self else { return }
+    self.reload()
+}
+```
+
+Swift 写法变了，但内存语义没变：对象持有 closure，closure 捕获对象，就会形成环。
+
+## 16. NSError 与 Swift Error
+
+Objective-C 常用 `NSError`，Swift 常用 `Error` 和 `throws`。
+
+给混编边界设计 API 时，不要只返回 `BOOL`：
+
+```objc
+- (BOOL)saveArticle:(YWArticle *)article error:(NSError **)error;
+```
+
+Swift 可以更自然地处理：
+
+```swift
+do {
+    try store.saveArticle(article)
+} catch {
+    print(error)
+}
+```
+
+如果 Objective-C 只返回 `NO`，Swift 调用方拿不到失败原因，排查困难。
+
+## 17. 头文件依赖和编译成本
+
+Bridging Header 会影响 Swift 编译。放进去的 Objective-C 头越多，Swift 编译越容易变慢，也更容易因为某个 Objective-C 头的问题导致 Swift 编译失败。
+
+建议：
+
+- 只暴露 Swift 必须使用的头。
+- 公共头尽量少 import，优先 forward declaration。
+- 大型 Objective-C 模块通过 Facade 暴露。
+- 不要把内部私有头放进 Bridging Header。
+
+Objective-C 头文件：
+
+```objc
+@class YWUser;
+
+@interface YWUserCell : UITableViewCell
+
+- (void)renderWithUser:(YWUser *)user;
+
+@end
+```
+
+在 `.m` 中再 import 具体头文件。这能减少头文件依赖扩散。
+
+## 18. 混编迁移策略
+
+老 Objective-C 项目引入 Swift，不建议一次性大改。
+
+更稳的路径：
+
+1. 从独立工具类或新页面开始。
+2. 用 Facade 控制 Swift 对 Objective-C 的暴露面。
+3. Objective-C 基础 Model 补 Nullability。
+4. 新模块内部可以 Swift 化，对外保持稳定。
+5. 每次迁移都保证可回滚。
+
+混编的目标是演进，不是制造两套互相看不懂的代码。
+
+## 19. 掌握标准
 
 掌握 Swift 混编，需要能做到：
 

@@ -259,7 +259,165 @@ flowchart TD
 
 这样可以避免生命周期方法不断膨胀，也能让页面逻辑更容易测试、迁移和复用。
 
-## 10. 工程实践中的判断准则
+## 10. 常见生命周期事故
+
+生命周期问题经常不是崩溃，而是行为异常。
+
+### 重复请求
+
+把请求放在 `viewWillAppear:`，页面每次返回都会重新请求：
+
+```objc
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [self loadData];
+}
+```
+
+如果业务只需要首次加载，应加状态控制：
+
+```objc
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+
+    if (!self.hasLoadedInitialData) {
+        self.hasLoadedInitialData = YES;
+        [self loadData];
+    }
+}
+```
+
+如果业务确实每次出现都要刷新，应确保请求可取消、可去重、可处理旧请求晚返回。
+
+### 页面无法释放
+
+离开页面后 `dealloc` 不打印，说明还有对象强持有它。
+
+```objc
+- (void)dealloc {
+    NSLog(@"%@ dealloc", NSStringFromClass(self.class));
+}
+```
+
+常见排查顺序：
+
+1. 检查 Block 是否捕获 `self`。
+2. 检查 Timer / DisplayLink 是否 invalidate。
+3. 检查通知、KVO 是否解除。
+4. 检查单例或 Manager 是否持有页面。
+5. 使用 Memory Graph 查看引用链。
+
+### 首屏卡顿
+
+`viewDidLoad` 中做太多同步工作，会拖慢首屏：
+
+```objc
+- (void)viewDidLoad {
+    [super viewDidLoad];
+
+    [self buildViews];
+    [self parseLargeJSONSynchronously];
+    [self decodeImagesSynchronously];
+    [self queryDatabaseSynchronously];
+}
+```
+
+更合理的方式：
+
+- 必要 UI 先出现。
+- 大 JSON 放后台解析。
+- 图片后台解码。
+- 数据库查询异步。
+- 首屏后再加载非关键内容。
+
+## 11. 生命周期和资源管理
+
+资源应该在合适阶段开始，也要在合适阶段停止。
+
+| 资源 | 开始时机 | 停止时机 |
+| --- | --- | --- |
+| 网络请求 | `viewDidLoad` 或用户触发 | `dealloc` / 页面取消 |
+| 计时器 | 页面可见后 | 页面消失或释放 |
+| 视频播放 | `viewDidAppear:` | `viewWillDisappear:` / 后台 |
+| 通知监听 | 初始化或加载后 | `dealloc` |
+| KVO | 明确绑定时 | 对称解绑 |
+
+计时器示例：
+
+```objc
+@property (nonatomic, strong, nullable) NSTimer *timer;
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+
+    self.timer = [NSTimer scheduledTimerWithTimeInterval:1.0
+                                                  target:self
+                                                selector:@selector(tick)
+                                                userInfo:nil
+                                                 repeats:YES];
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+
+    [self.timer invalidate];
+    self.timer = nil;
+}
+```
+
+如果 Timer 应该和对象生命周期绑定，而不是页面可见性绑定，也要在 `dealloc` 兜底释放。
+
+## 12. 生命周期状态机思维
+
+复杂页面可以用状态机理解生命周期，而不是散落多个 bool。
+
+```mermaid
+stateDiagram-v2
+    [*] --> Created
+    Created --> ViewLoaded
+    ViewLoaded --> Visible
+    Visible --> Invisible
+    Invisible --> Visible
+    Invisible --> Released
+    Visible --> Background
+    Background --> Visible
+```
+
+例如直播页、音视频页、支付页、编辑页，通常需要明确：
+
+- 页面是否已加载。
+- 页面是否可见。
+- App 是否在前台。
+- 用户是否正在操作。
+- 当前任务是否可恢复。
+
+状态机能减少“某个回调刚好没走到”带来的边界问题。
+
+## 13. Swift 混编提示
+
+Swift 页面生命周期名称相同，但闭包和 async task 会带来新的生命周期问题。
+
+Swift `Task` 如果在页面释放后仍持有 `self`，同样可能导致页面不释放。Objective-C 页面调用 Swift 模块时，也要明确回调线程和生命周期。
+
+Objective-C 暴露给 Swift 的生命周期相关 API 应写清楚：
+
+```objc
+NS_ASSUME_NONNULL_BEGIN
+
+@interface YWPageLifecycleObserver : NSObject
+
+- (void)pageDidBecomeVisible;
+- (void)pageDidBecomeInvisible;
+- (void)invalidate;
+
+@end
+
+NS_ASSUME_NONNULL_END
+```
+
+`invalidate` 这类显式释放入口在混编工程中很有价值，因为不是所有资源都能只依赖 `dealloc`。
+
+## 14. 工程实践中的判断准则
 
 - `viewDidLoad` 适合一次性初始化，不适合每次刷新。
 - `viewWillAppear:` 会多次调用，逻辑必须轻。

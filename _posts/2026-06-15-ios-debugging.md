@@ -213,7 +213,184 @@ NSLog(@"%@", value);
 - 数据源是否更新。
 - UI 是否在主线程刷新。
 
-## 12. 掌握标准
+## 12. 调试不是猜，而是建立证据链
+
+成熟的调试过程应该形成证据链：
+
+```mermaid
+flowchart TD
+    A["Symptom"] --> B["Reproduce"]
+    B --> C["Collect logs / stack / state"]
+    C --> D["Narrow scope"]
+    D --> E["Make hypothesis"]
+    E --> F["Verify"]
+    F --> G{"Confirmed?"}
+    G -- "No" --> D
+    G -- "Yes" --> H["Fix"]
+    H --> I["Regression test"]
+```
+
+不要在没有证据时连续改代码。改到“看起来好了”但不知道为什么，是下一次线上事故的来源。
+
+## 13. 崩溃分析路径
+
+看到崩溃先分层：
+
+- Objective-C 异常：数组越界、字典插入 nil、KVC key 错误。
+- Mach 异常：野指针、内存访问错误、栈溢出。
+- Watchdog：主线程卡死或启动太慢。
+- OOM：内存过高被系统杀死。
+
+Objective-C 异常通常能看到 `Last Exception Backtrace`。野指针可能只看到 `EXC_BAD_ACCESS`。
+
+数组越界示例：
+
+```objc
+- (NSString *)titleAtIndex:(NSUInteger)index {
+    return self.titles[index];
+}
+```
+
+防御写法：
+
+```objc
+- (nullable NSString *)titleAtIndex:(NSUInteger)index {
+    if (index >= self.titles.count) {
+        return nil;
+    }
+    return self.titles[index];
+}
+```
+
+防御不是让错误沉默。关键路径可以记录异常数据，帮助定位调用方为什么传了非法 index。
+
+## 14. EXC_BAD_ACCESS 怎么查
+
+`EXC_BAD_ACCESS` 表示访问了不该访问的内存。常见原因：
+
+- 对象已释放后继续访问。
+- C 指针越界。
+- Core Foundation 对象桥接所有权错误。
+- 多线程同时修改对象导致内存破坏。
+
+排查工具：
+
+- Address Sanitizer。
+- Zombie Objects。
+- Thread Sanitizer。
+- Memory Graph。
+
+Zombie 适合查“给已释放对象发消息”。开启后对象释放时不会立即回收，而是变成 Zombie，收到消息时能告诉你是哪类对象。
+
+注意：Zombie 会让内存不释放，只能调试时打开。
+
+## 15. 卡顿分析
+
+卡顿要看主线程在做什么。常见原因：
+
+- 主线程同步网络或文件 IO。
+- 大量 JSON 解析。
+- 图片解码。
+- 复杂 Auto Layout。
+- 滚动时频繁创建对象。
+- 主线程等待锁。
+
+Time Profiler 里重点看：
+
+- Main Thread。
+- 耗时最多的调用栈。
+- 是否有系统调用阻塞。
+- 是否有自己的方法反复出现。
+
+主线程卡顿示例：
+
+```objc
+- (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
+    NSData *data = [NSData dataWithContentsOfURL:self.imageURLs[indexPath.row]];
+    cell.imageView.image = [UIImage imageWithData:data];
+}
+```
+
+这会在滚动时同步下载图片。修复方向是异步下载、缓存、复用校验和后台解码。
+
+## 16. 内存泄漏和内存增长不是一回事
+
+内存泄漏：对象已经不需要，但仍被强引用。
+
+内存增长：对象可能仍有引用，可能是缓存，也可能是业务确实持有。
+
+常见循环引用：
+
+```objc
+@property (nonatomic, copy) void (^completion)(void);
+
+self.completion = ^{
+    [self reloadData];
+};
+```
+
+修复：
+
+```objc
+__weak typeof(self) weakSelf = self;
+self.completion = ^{
+    __strong typeof(weakSelf) self = weakSelf;
+    if (!self) {
+        return;
+    }
+
+    [self reloadData];
+};
+```
+
+Memory Graph 要沿引用链看谁持有了谁，不要只看到对象没释放就下结论。
+
+## 17. 线上日志设计
+
+线上问题不能靠 Xcode 断点。需要有足够日志：
+
+- 请求 URL 和业务 code。
+- 关键参数的脱敏版本。
+- 页面进入和离开。
+- 登录态变化。
+- 缓存命中和过期。
+- 关键异常和错误码。
+
+不要记录：
+
+- Token。
+- 密码。
+- 完整身份证、手机号等敏感信息。
+- 用户输入的隐私内容。
+
+日志要能串起来，最好带 request id 或 trace id。
+
+## 18. LLDB 高价值命令
+
+除了 `po`，还应该掌握：
+
+```lldb
+bt
+frame variable
+expression self.view.backgroundColor = [UIColor redColor]
+breakpoint set -n objc_exception_throw
+thread backtrace all
+```
+
+`thread backtrace all` 对卡死很有用，可以看到所有线程在等什么。
+
+## 19. Swift 混编提示
+
+混编项目调试时要注意栈里可能同时出现 Swift 和 Objective-C。
+
+- Swift Optional 崩溃可能来自 Objective-C 传入了未标注的 nil。
+- Objective-C Block 循环引用在 Swift closure 中同样存在。
+- Swift 异步任务回调 Objective-C UI 时仍要回主线程。
+- dSYM 必须覆盖 Swift 和 Objective-C 产物，否则符号化不完整。
+
+Objective-C API 的 Nullability 会直接影响 Swift 调试体验。类型越明确，崩溃越早在编译期暴露。
+
+## 20. 掌握标准
 
 掌握调试，需要能做到：
 

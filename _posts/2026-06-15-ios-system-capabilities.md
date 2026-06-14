@@ -219,7 +219,227 @@ if ([[UIApplication sharedApplication] canOpenURL:url]) {
 
 权限体验要克制。用户还没理解功能价值时就请求权限，拒绝率通常更高。
 
-## 11. 掌握标准
+## 11. 系统能力的通用接入模型
+
+多数系统能力都可以按同一套模型理解：
+
+```mermaid
+flowchart TD
+    A["Declare capability / Info.plist"] --> B["Check current authorization"]
+    B --> C{"Authorized?"}
+    C -- "Yes" --> D["Use system API"]
+    C -- "No / Not determined" --> E["Request permission"]
+    E --> F{"Granted?"}
+    F -- "Yes" --> D
+    F -- "No" --> G["Fallback / Settings guide"]
+    D --> H["Handle callback"]
+    H --> I["Update UI on main thread"]
+```
+
+相机、相册、定位、通知、麦克风都绕不开这条链路。区别只是权限枚举和 API 不同。
+
+## 12. 权限请求时机
+
+权限不应该在 App 启动时一口气请求。用户还不知道为什么需要权限，拒绝率会很高。
+
+更合理的时机：
+
+- 用户点击“拍摄头像”时请求相机。
+- 用户点击“选择照片”时请求相册。
+- 用户进入附近服务时请求定位。
+- 用户开启提醒功能时请求通知。
+
+权限文案要解释用途，不要写“需要权限才能使用”这种无效描述。
+
+## 13. 相册有限权限
+
+iOS 14 后，相册可能处于有限访问状态。用户只授权部分照片。
+
+```objc
+PHAuthorizationStatus status = [PHPhotoLibrary authorizationStatusForAccessLevel:PHAccessLevelReadWrite];
+
+if (status == PHAuthorizationStatusLimited) {
+    NSLog(@"limited photo access");
+}
+```
+
+有限权限下，App 不能假设能读取整个相册。需要提供“管理可访问照片”的入口：
+
+```objc
+[[PHPhotoLibrary sharedPhotoLibrary] presentLimitedLibraryPickerFromViewController:self];
+```
+
+这类变化说明系统能力不是一次学完就不变，iOS 版本演进会改变权限模型。
+
+## 14. 定位精度和耗电
+
+定位不是越精确越好。精度越高、更新越频繁，耗电越明显。
+
+```objc
+self.manager.desiredAccuracy = kCLLocationAccuracyHundredMeters;
+self.manager.distanceFilter = 100.0;
+```
+
+如果只是城市级服务，不应该使用最高精度连续定位。
+
+定位还要处理授权变化：
+
+```objc
+- (void)locationManagerDidChangeAuthorization:(CLLocationManager *)manager {
+    CLAuthorizationStatus status = manager.authorizationStatus;
+    if (status == kCLAuthorizationStatusAuthorizedWhenInUse ||
+        status == kCLAuthorizationStatusAuthorizedAlways) {
+        [manager startUpdatingLocation];
+    } else {
+        [manager stopUpdatingLocation];
+    }
+}
+```
+
+权限变化可能发生在系统设置中，不能只处理首次授权。
+
+## 15. 推送链路
+
+推送不是客户端单独完成的功能。
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant APNs
+    participant Server
+
+    App->>APNs: register for remote notifications
+    APNs-->>App: device token
+    App->>Server: upload device token
+    Server->>APNs: send payload
+    APNs-->>App: deliver notification
+```
+
+客户端要处理：
+
+- 请求通知权限。
+- 注册远程推送。
+- 上传 device token。
+- 处理前台通知展示。
+- 处理用户点击通知后的路由。
+- 退出登录后解绑 token 或更新账号关系。
+
+device token 可能变化，不要假设永久不变。
+
+## 16. WebView 的安全边界
+
+`WKWebView` 常用于 H5 页面，但它会带来安全和稳定性问题。
+
+需要关注：
+
+- 只加载可信域名。
+- JS 调 Native 的方法白名单。
+- 参数校验。
+- Cookie 同步。
+- 页面白屏监控。
+- 内存占用。
+
+JS Bridge 示例：
+
+```objc
+[configuration.userContentController addScriptMessageHandler:self name:@"native"];
+
+- (void)userContentController:(WKUserContentController *)userContentController
+      didReceiveScriptMessage:(WKScriptMessage *)message {
+    if (![message.name isEqualToString:@"native"]) {
+        return;
+    }
+
+    if (![message.body isKindOfClass:NSDictionary.class]) {
+        return;
+    }
+
+    NSDictionary *body = (NSDictionary *)message.body;
+    NSString *action = body[@"action"];
+    if ([action isEqualToString:@"openArticle"]) {
+        [self openArticleWithPayload:body];
+    }
+}
+```
+
+不要让 H5 任意调用 Native 方法。Bridge 本质上是跨边界接口，必须校验。
+
+## 17. Deep Link 的路由安全
+
+Deep Link 能从外部打开 App 页面，也意味着外部输入可以进入你的路由系统。
+
+必须校验：
+
+- scheme / host 是否可信。
+- path 是否存在。
+- 参数是否合法。
+- 是否需要登录。
+- 是否有权限访问。
+
+```objc
+- (BOOL)handleURL:(NSURL *)url {
+    if (![url.scheme isEqualToString:@"yawzhang"]) {
+        return NO;
+    }
+
+    if ([url.host isEqualToString:@"post"]) {
+        NSURLComponents *components = [NSURLComponents componentsWithURL:url resolvingAgainstBaseURL:NO];
+        NSString *postId = [self valueForName:@"id" inItems:components.queryItems];
+        if (postId.length == 0) {
+            return NO;
+        }
+
+        [self.router openPostWithId:postId];
+        return YES;
+    }
+
+    return NO;
+}
+```
+
+不要把 URL 参数直接拼进 SQL、文件路径或 WebView URL。
+
+## 18. 后台能力的限制
+
+iOS 后台能力是受限制的，不是申请了权限就能一直运行。
+
+后台任务要考虑：
+
+- 系统是否允许当前类型后台运行。
+- 任务是否能在有限时间内完成。
+- 失败后是否能恢复。
+- 是否影响电量。
+- 是否符合 App Store 审核规则。
+
+普通 App 进入后台后，应保存状态、停止不必要任务，而不是试图长期保活。
+
+## 19. Swift 混编提示
+
+系统框架很多是 Swift 和 Objective-C 都可用，但混编时要注意：
+
+- Delegate 对象生命周期，避免被释放。
+- 权限回调线程，不要直接后台更新 UI。
+- Objective-C API 暴露给 Swift 时标注 nullable。
+- Swift enum/struct 如果要给 Objective-C 调用，需要包装。
+
+例如把系统能力封装成 Objective-C 友好的服务：
+
+```objc
+NS_ASSUME_NONNULL_BEGIN
+
+@interface YWPermissionService : NSObject
+
+- (void)requestCameraPermissionWithCompletion:(void (^)(BOOL granted))completion;
+- (void)openSystemSettings;
+
+@end
+
+NS_ASSUME_NONNULL_END
+```
+
+Swift 和 Objective-C 页面都调用同一层服务，权限策略就不会散落。
+
+## 20. 掌握标准
 
 掌握系统能力，需要能做到：
 
