@@ -1,0 +1,30 @@
+---
+layout: default
+---
+
+<main>
+  <article class="page">
+    <h1>{{ page.title }}</h1>
+    <p>{{ page.description }}</p>
+  </article>
+
+  <section aria-labelledby="category-posts">
+    <div class="section-head">
+      <h2 id="category-posts">文章</h2>
+      <p class="section-note">{{ page.category_name }}</p>
+    </div>
+    <div class="posts">
+      {% assign posts = site.categories[page.category_name] %}
+      {% for post in posts %}
+        <article class="post">
+          <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%Y.%m.%d" }}</time>
+          <a class="post-link" href="{{ post.url | relative_url }}">
+            <h2>{{ post.title }}</h2>
+            <p>{{ post.description }}</p>
+          </a>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+</main>
+

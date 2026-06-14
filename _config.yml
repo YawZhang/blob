@@ -1,0 +1,15 @@
+title: Yaw Zhang
+description: 记录技术、项目和一些长期问题。
+url: "https://yawzhang.github.io"
+baseurl: "/blob"
+permalink: /posts/:title/
+timezone: Asia/Shanghai
+markdown: kramdown
+
+defaults:
+  - scope:
+      path: ""
+      type: posts
+    values:
+      layout: post
+

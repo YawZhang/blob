@@ -1,0 +1,62 @@
+---
+layout: default
+---
+
+<main id="top">
+  <div class="hero">
+    <p class="kicker">Personal Blog</p>
+    <h1>记录技术、项目和一些长期问题。</h1>
+    <p class="intro">这里是我的个人博客。内容会尽量保持简洁、清楚、可回看，像一间安静的工作台。</p>
+  </div>
+
+  <section id="posts" aria-labelledby="posts-title">
+    <div class="section-head">
+      <h2 id="posts-title">最新文章</h2>
+      <p class="section-note">持续更新中</p>
+    </div>
+
+    <div class="posts">
+      {% for post in site.posts %}
+        <article class="post">
+          <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%Y.%m.%d" }}</time>
+          <div>
+            <a class="category" href="{{ '/categories/' | append: post.category_slug | append: '/' | relative_url }}">{{ post.category }}</a>
+            <a class="post-link" href="{{ post.url | relative_url }}">
+              <h2>{{ post.title }}</h2>
+              <p>{{ post.description }}</p>
+            </a>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section id="categories" aria-labelledby="categories-title">
+    <div class="section-head">
+      <h2 id="categories-title">分类</h2>
+      <p class="section-note">按文章类型浏览</p>
+    </div>
+    <div class="meta">
+      <a class="pill" href="{{ '/categories/ios/' | relative_url }}">iOS</a>
+      <a class="pill" href="{{ '/categories/learning/' | relative_url }}">学习</a>
+      <a class="pill" href="{{ '/categories/project/' | relative_url }}">项目</a>
+      <a class="pill" href="{{ '/categories/life/' | relative_url }}">随笔</a>
+    </div>
+  </section>
+
+  <section id="about" aria-labelledby="about-title">
+    <div class="section-head">
+      <h2 id="about-title">关于</h2>
+    </div>
+    <div class="about">
+      <p>你好，我是 Yaw Zhang。这个博客用于沉淀技术笔记、项目复盘、阅读摘录和生活观察。</p>
+      <div class="meta">
+        <span class="pill">技术</span>
+        <span class="pill">写作</span>
+        <span class="pill">产品</span>
+        <span class="pill">@YawZhang</span>
+      </div>
+    </div>
+  </section>
+</main>
+
