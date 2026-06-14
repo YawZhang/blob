@@ -266,6 +266,83 @@
         border: 1px solid var(--line);
         box-shadow: var(--shadow);
       }
+      .post-page {
+        max-width: 1180px;
+      }
+      .post-shell {
+        display: grid;
+        grid-template-columns: 220px minmax(0, 840px);
+        gap: 32px;
+        align-items: start;
+        justify-content: center;
+      }
+      .toc {
+        position: sticky;
+        top: 92px;
+        max-height: calc(100vh - 120px);
+        overflow: auto;
+        padding: 18px;
+        border-radius: 14px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+      }
+      .toc-title {
+        margin: 0 0 10px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 800;
+      }
+      .toc ol {
+        display: grid;
+        gap: 4px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .toc a {
+        display: block;
+        padding: 7px 8px;
+        border-radius: 8px;
+        color: #525252;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .toc a:hover,
+      .toc a.active {
+        background: #f1f5f9;
+        color: var(--green);
+      }
+      .toc .toc-h3 a {
+        padding-left: 18px;
+        color: var(--muted);
+      }
+      .toc-mobile {
+        display: none;
+        margin: 28px 0 0;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: #fafafa;
+      }
+      .toc-mobile summary {
+        cursor: pointer;
+        padding: 14px 16px;
+        color: #262626;
+        font-weight: 700;
+      }
+      .toc-mobile[open] summary {
+        border-bottom: 1px solid var(--line);
+      }
+      .toc-mobile .toc {
+        position: static;
+        max-height: none;
+        overflow: visible;
+        padding: 10px;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+      }
       .article-meta {
         display: flex;
         gap: 10px;
@@ -353,6 +430,9 @@
         .hero, .featured-grid { grid-template-columns: 1fr; }
         .post-grid, .category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .about-panel { grid-template-columns: 1fr; }
+        .post-shell { grid-template-columns: 1fr; }
+        .toc-desktop { display: none; }
+        .toc-mobile { display: block; }
       }
       @media (max-width: 660px) {
         .site-header {

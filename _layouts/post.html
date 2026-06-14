@@ -2,7 +2,13 @@
 layout: default
 ---
 
-<main>
+<main class="post-page">
+  <div class="post-shell">
+    <aside class="toc toc-desktop" data-toc aria-label="文章目录">
+      <p class="toc-title">目录</p>
+      <ol data-toc-list></ol>
+    </aside>
+
   <article class="article">
     <div class="article-meta">
       <a href="{{ '/categories/' | append: page.category_slug | append: '/' | relative_url }}">{{ page.category }}</a>
@@ -11,8 +17,60 @@ layout: default
     </div>
     <h1>{{ page.title }}</h1>
     <p class="summary">{{ page.description }}</p>
+
+    <details class="toc-mobile">
+      <summary>目录</summary>
+      <div class="toc" data-mobile-toc>
+        <ol data-mobile-toc-list></ol>
+      </div>
+    </details>
+
     <div class="article-body">
       {{ content }}
     </div>
   </article>
+  </div>
 </main>
+
+<script>
+  (function () {
+    var body = document.querySelector(".article-body");
+    var desktopList = document.querySelector("[data-toc-list]");
+    var mobileList = document.querySelector("[data-mobile-toc-list]");
+    var desktopToc = document.querySelector("[data-toc]");
+    var mobileToc = document.querySelector(".toc-mobile");
+
+    if (!body || !desktopList || !mobileList) return;
+
+    var headings = Array.prototype.slice.call(body.querySelectorAll("h2, h3"));
+    if (!headings.length) {
+      if (desktopToc) desktopToc.hidden = true;
+      if (mobileToc) mobileToc.hidden = true;
+      return;
+    }
+
+    headings.forEach(function (heading, index) {
+      if (!heading.id) {
+        heading.id = "section-" + (index + 1);
+      }
+
+      [desktopList, mobileList].forEach(function (list) {
+        var item = document.createElement("li");
+        var link = document.createElement("a");
+        item.className = "toc-" + heading.tagName.toLowerCase();
+        link.href = "#" + heading.id;
+        link.textContent = heading.textContent;
+        item.appendChild(link);
+        list.appendChild(item);
+      });
+    });
+
+    var links = Array.prototype.slice.call(document.querySelectorAll(".toc a"));
+    links.forEach(function (link) {
+      link.addEventListener("click", function () {
+        links.forEach(function (item) { item.classList.remove("active"); });
+        link.classList.add("active");
+      });
+    });
+  })();
+</script>
