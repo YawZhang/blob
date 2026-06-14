@@ -1,0 +1,31 @@
+---
+layout: default
+---
+
+<main>
+  <section class="page-title">
+    <span>Columns</span>
+    <h1>{{ page.title }}</h1>
+    <p>{{ page.description }}</p>
+  </section>
+
+  <section>
+    {% assign category_pages = site.pages | where: "layout", "category" | sort: "title" %}
+    <div class="section-head">
+      <div>
+        <h2>全部专栏</h2>
+        <p>以后新增专栏，只会出现在这里，不会挤占顶部导航。</p>
+      </div>
+    </div>
+    <div class="category-grid">
+      {% for category_page in category_pages %}
+        {% assign category_posts = site.categories[category_page.category_name] %}
+        <a class="category-card {{ category_page.category_slug }}" href="{{ category_page.url | relative_url }}">
+          <span>{{ category_page.title }}</span>
+          <strong>{{ category_posts | size }}</strong>
+          <p>{{ category_page.description }}</p>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+</main>

@@ -1,0 +1,37 @@
+---
+layout: default
+---
+
+<main>
+  <section class="page-title">
+    <span>All Posts</span>
+    <h1>{{ page.title }}</h1>
+    <p>{{ page.description }}</p>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div>
+        <h2>全部文章</h2>
+        <p>共 {{ site.posts | size }} 篇。</p>
+      </div>
+    </div>
+    <div class="post-grid">
+      {% for post in site.posts %}
+        <article class="post-card">
+          <a href="{{ post.url | relative_url }}">
+            <div class="thumb {{ post.category_slug }}"><span>{{ post.category }}</span></div>
+            <div class="card-body">
+              <div class="meta">
+                <span>{{ post.category }}</span>
+                <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%Y.%m.%d" }}</time>
+              </div>
+              <h2>{{ post.title }}</h2>
+              <p>{{ post.description }}</p>
+            </div>
+          </a>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+</main>

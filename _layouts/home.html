@@ -110,9 +110,10 @@ layout: default
     {% assign life_posts = site.posts | where: "category_slug", "life" %}
     <div class="section-head">
       <div>
-        <h2>分类入口</h2>
-        <p>保留分类能力，但首页视觉更像个人博客。</p>
+        <h2>常用专栏</h2>
+        <p>首页只展示常用入口，完整专栏统一放在专栏页。</p>
       </div>
+      <a href="{{ '/categories/' | relative_url }}">查看全部专栏</a>
     </div>
     <div class="category-grid">
       <a class="category-card ios" href="{{ '/categories/ios/' | relative_url }}">
