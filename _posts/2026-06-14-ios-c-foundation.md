@@ -494,20 +494,47 @@ Objective-C 项目里常见的链接错误也属于这一类问题：
 
 ### 编译错误和链接错误的区别
 
-编译错误通常说明“当前源文件自己就不合法”，比如语法错误、类型错误、找不到头文件。
+编译错误通常说明“当前源文件自己就不合法”。判断时看三个信号：
+
+- 错误通常指向某个具体 `.m`、`.h` 或某一行代码。
+- 报错内容常见是语法、类型、头文件、属性或方法调用问题。
+- 还没有进入“把所有目标文件合起来”的阶段。
 
 ```objective-c
 NSString *name = 123;
 ```
 
-链接错误通常说明“单个文件看起来能编译，但整个工程合起来对不上”，比如只有声明没有实现、库没有链接、符号重复。
+这类错误一般会直接定位到某一行。修复方向是改当前代码：类型是否匹配、头文件是否能找到、方法名是否写错、语法是否完整。
 
 ```text
-Undefined symbols
-Duplicate symbol
+Use of undeclared identifier
+Expected ';' after expression
+Incompatible pointer types
+'User.h' file not found
 ```
 
-这两个方向要分开判断。看到错误时，先判断它发生在编译阶段还是链接阶段，排查会快很多。
+链接错误通常说明“单个文件各自能编译，但整个工程合起来对不上”。判断时也看三个信号：
+
+- 错误经常出现在 Build 的后半段，而不是某个源文件刚开始编译时。
+- 报错内容常见是 `Undefined symbols`、`Duplicate symbol`、`ld`、`linker command failed`。
+- 错误不一定指向某一行业务代码，而是指向某个符号、类、函数、库或架构。
+
+```text
+Undefined symbols for architecture arm64
+Duplicate symbol '_count'
+ld: framework not found SomeSDK
+clang: error: linker command failed with exit code 1
+```
+
+链接错误的修复方向不是先改某一行语法，而是检查工程整体关系：
+
+- 只有声明没有实现：补上 `.m` / `.c` 实现文件。
+- 文件存在但没参与编译：检查 Target Membership。
+- 使用了第三方库：检查库是否被正确链接。
+- 符号重复：检查是否重复集成库、重复定义全局变量或 C 函数。
+- 架构不匹配：检查真机、模拟器、arm64、x86_64 等架构设置。
+
+一个简单判断方式是：如果错误在说“这行代码写得不合法”，多半是编译错误；如果错误在说“这个符号最终找不到、重复了、库没连上”，多半是链接错误。
 
 这解释了为什么头文件里通常只放声明，不直接放变量定义或函数实现。
 
