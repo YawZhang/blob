@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>iOS Objective-C 核心学习能力 - Yaw Zhang</title>
+    <style>
+      :root { --bg:#fbfbfa; --ink:#171717; --muted:#696969; --line:#e7e5e1; }
+      * { box-sizing: border-box; }
+      body { margin:0; background:var(--bg); color:var(--ink); font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif; line-height:1.78; }
+      a { color:inherit; text-decoration:none; }
+      .wrap { width:min(720px,calc(100% - 40px)); margin:0 auto; }
+      header { display:flex; justify-content:space-between; gap:24px; padding:28px 0; border-bottom:1px solid var(--line); font-size:14px; }
+      header a:first-child { font-weight:700; }
+      nav { display:flex; gap:18px; color:var(--muted); }
+      article { padding:76px 0 72px; }
+      time, .category { color:var(--muted); font-size:14px; }
+      h1 { margin:18px 0 24px; font-size:clamp(34px,7vw,58px); line-height:1.08; letter-spacing:0; }
+      h2 { margin:42px 0 12px; font-size:22px; line-height:1.35; }
+      p { margin:0 0 22px; color:#303030; font-size:18px; }
+      ul { margin:0 0 20px; padding-left:20px; color:#303030; }
+      li + li { margin-top:6px; }
+      .back { display:inline-flex; margin-top:34px; color:var(--muted); font-size:14px; }
+      footer { padding:30px 0 50px; border-top:1px solid var(--line); color:var(--muted); font-size:14px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <a href="../index.html">Yaw Zhang</a>
+        <nav>
+          <a href="../index.html#posts">文章</a>
+          <a href="../categories/ios.html">iOS</a>
+          <a href="../index.html#about">关于</a>
+        </nav>
+      </header>
+
+      <article>
+        <a class="category" href="../categories/ios.html">iOS</a>
+        <h1>iOS Objective-C 核心学习能力</h1>
+        <time datetime="2026-06-14">2026.06.14</time>
+
+        <p>这篇文章按技术栈整理 Objective-C iOS 开发需要掌握的关键能力。它不是时间计划，而是一张能力地图。</p>
+
+        <h2>1. C 语言基础</h2>
+        <ul>
+          <li>指针、结构体、函数、头文件、宏定义。</li>
+          <li>理解编译过程、内存地址和基础数据表示。</li>
+        </ul>
+
+        <h2>2. Objective-C 语言</h2>
+        <ul>
+          <li>类与对象、属性与方法、继承与多态。</li>
+          <li>协议、分类、扩展、Block、Runtime 基础。</li>
+          <li>id、instancetype、nil、NULL、NSNull。</li>
+        </ul>
+
+        <h2>3. 内存管理</h2>
+        <ul>
+          <li>ARC、strong、weak、copy、assign。</li>
+          <li>dealloc、Autorelease Pool、循环引用、Block 捕获。</li>
+        </ul>
+
+        <h2>4. Foundation</h2>
+        <ul>
+          <li>NSString、NSArray、NSDictionary、NSNumber、NSDate、NSData。</li>
+          <li>NSURL、NSError、NSNotificationCenter、KVC / KVO、NSTimer、NSOperation。</li>
+        </ul>
+
+        <h2>5. UIKit</h2>
+        <ul>
+          <li>UIView、UIViewController、UIWindow。</li>
+          <li>UILabel、UIButton、UIImageView、UITextField、UIScrollView。</li>
+          <li>UITableView、UICollectionView、UINavigationController、UITabBarController。</li>
+        </ul>
+
+        <h2>6. 生命周期</h2>
+        <ul>
+          <li>App 生命周期、Scene 生命周期、页面生命周期。</li>
+          <li>前后台切换、页面加载与释放、内存警告处理。</li>
+        </ul>
+
+        <h2>7. 布局</h2>
+        <ul>
+          <li>Frame、Auto Layout、Safe Area、Stack View。</li>
+          <li>屏幕适配、横竖屏适配、暗色模式基础。</li>
+        </ul>
+
+        <h2>8. 事件与交互</h2>
+        <ul>
+          <li>Target-Action、Delegate、手势、Responder Chain。</li>
+          <li>键盘处理、页面跳转、页面传值。</li>
+        </ul>
+
+        <h2>9. 网络</h2>
+        <ul>
+          <li>HTTP、GET / POST、Header / Body、状态码。</li>
+          <li>JSON 解析、NSURLSession、请求封装、错误处理、图片加载。</li>
+        </ul>
+
+        <h2>10. 数据存储</h2>
+        <ul>
+          <li>Model 设计、JSON 转 Model。</li>
+          <li>NSUserDefaults、文件存储、沙盒目录、SQLite、Core Data、Keychain。</li>
+        </ul>
+
+        <h2>11. 多线程</h2>
+        <ul>
+          <li>主线程、GCD、Serial Queue、Concurrent Queue。</li>
+          <li>dispatch_async、dispatch_group、NSOperationQueue、线程安全。</li>
+        </ul>
+
+        <h2>12. 架构</h2>
+        <ul>
+          <li>MVC、MVVM、Service 层、Manager 层、ViewModel、Router。</li>
+          <li>模块拆分、胖 ViewController 拆分。</li>
+        </ul>
+
+        <h2>13. 调试</h2>
+        <ul>
+          <li>Xcode 断点、LLDB、Console、View Debugger。</li>
+          <li>Memory Graph、Instruments、Crash Log、内存泄漏分析、卡顿分析。</li>
+        </ul>
+
+        <h2>14. 工程化</h2>
+        <ul>
+          <li>Project / Workspace、Target、Scheme、Build Settings。</li>
+          <li>Debug / Release、CocoaPods、Swift Package Manager、静态库 / 动态库。</li>
+          <li>打包、TestFlight、App Store Connect。</li>
+        </ul>
+
+        <h2>15. 系统能力</h2>
+        <ul>
+          <li>相机、相册、定位、推送、WebView、分享、支付。</li>
+          <li>Deep Link、Universal Links、后台任务、权限管理。</li>
+        </ul>
+
+        <h2>16. Swift 混编</h2>
+        <ul>
+          <li>Swift 基础、OC 调 Swift、Swift 调 OC。</li>
+          <li>Bridging Header、Nullability、Swift Package、混编工程结构。</li>
+        </ul>
+
+        <a class="back" href="../index.html#posts">返回文章列表</a>
+      </article>
+
+      <footer>© 2026 Yaw Zhang.</footer>
+    </div>
+  </body>
+</html>

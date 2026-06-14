@@ -3,39 +3,33 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>我的个人博客</title>
-    <meta
-      name="description"
-      content="一个记录技术、生活和长期思考的个人博客。"
-    />
+    <title>Yaw Zhang</title>
+    <meta name="description" content="Yaw Zhang 的个人博客。" />
     <style>
       :root {
-        --bg: #f7f5ef;
-        --paper: #fffaf0;
-        --ink: #25221d;
-        --muted: #6b655a;
-        --line: #ded6c5;
-        --accent: #0f766e;
-        --accent-2: #9a3412;
-        --soft: #e8f3ef;
-        --shadow: 0 18px 50px rgba(37, 34, 29, 0.12);
+        --bg: #fbfbfa;
+        --ink: #171717;
+        --muted: #696969;
+        --line: #e7e5e1;
+        --soft: #f2f1ef;
       }
 
       * {
         box-sizing: border-box;
       }
 
+      html {
+        scroll-behavior: smooth;
+      }
+
       body {
         margin: 0;
+        background: var(--bg);
         color: var(--ink);
-        background:
-          radial-gradient(circle at 16% 10%, rgba(15, 118, 110, 0.13), transparent 24rem),
-          radial-gradient(circle at 84% 0%, rgba(154, 52, 18, 0.12), transparent 20rem),
-          var(--bg);
         font-family:
-          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-          "Segoe UI", "Microsoft YaHei", sans-serif;
-        line-height: 1.6;
+          ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          "Microsoft YaHei", sans-serif;
+        line-height: 1.72;
       }
 
       a {
@@ -43,452 +37,306 @@
         text-decoration: none;
       }
 
-      .page {
-        min-height: 100vh;
+      .wrap {
+        width: min(760px, calc(100% - 40px));
+        margin: 0 auto;
       }
 
-      .nav {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        border-bottom: 1px solid rgba(222, 214, 197, 0.82);
-        background: rgba(247, 245, 239, 0.86);
-        backdrop-filter: blur(16px);
-      }
-
-      .nav-inner {
+      header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        width: min(1120px, calc(100% - 32px));
-        min-height: 68px;
-        margin: 0 auto;
         gap: 24px;
+        padding: 28px 0;
+        border-bottom: 1px solid var(--line);
       }
 
       .brand {
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        font-weight: 800;
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 0;
       }
 
-      .brand-mark {
-        display: grid;
-        width: 34px;
-        height: 34px;
-        place-items: center;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: var(--paper);
-        color: var(--accent);
-        box-shadow: 0 8px 24px rgba(15, 118, 110, 0.14);
-      }
-
-      .nav-links {
+      nav {
         display: flex;
-        align-items: center;
-        gap: 20px;
+        gap: 18px;
         color: var(--muted);
         font-size: 14px;
       }
 
-      .nav-links a:hover {
+      nav a:hover,
+      .post-link:hover h3 {
         color: var(--ink);
       }
 
       .hero {
-        width: min(1120px, calc(100% - 32px));
-        margin: 0 auto;
-        padding: 84px 0 48px;
+        padding: 92px 0 72px;
       }
 
-      .hero-layout {
-        display: grid;
-        grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
-        align-items: center;
-        gap: 56px;
-      }
-
-      .eyebrow {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 20px;
-        color: var(--accent-2);
-        font-size: 13px;
-        font-weight: 750;
-        letter-spacing: 0;
-      }
-
-      .eyebrow::before {
-        content: "";
-        width: 28px;
-        height: 2px;
-        background: currentColor;
+      .kicker {
+        margin: 0 0 18px;
+        color: var(--muted);
+        font-size: 14px;
       }
 
       h1 {
-        max-width: 720px;
+        max-width: 700px;
         margin: 0;
-        font-family: Georgia, "Times New Roman", serif;
-        font-size: clamp(42px, 7vw, 86px);
-        line-height: 0.98;
+        font-size: clamp(42px, 8vw, 72px);
+        font-weight: 760;
+        line-height: 1.02;
         letter-spacing: 0;
       }
 
-      .hero p {
-        max-width: 650px;
-        margin: 26px 0 0;
+      .intro {
+        max-width: 620px;
+        margin: 28px 0 0;
         color: var(--muted);
         font-size: 18px;
       }
 
-      .actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        margin-top: 34px;
-      }
-
-      .button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 46px;
-        padding: 0 18px;
-        border: 1px solid var(--ink);
-        border-radius: 8px;
-        font-weight: 760;
-      }
-
-      .button.primary {
-        border-color: var(--accent);
-        background: var(--accent);
-        color: white;
-      }
-
-      .button:hover {
-        transform: translateY(-1px);
-      }
-
-      .portrait {
-        position: relative;
-        min-height: 430px;
-        overflow: hidden;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background:
-          linear-gradient(145deg, rgba(255, 250, 240, 0.92), rgba(232, 243, 239, 0.92)),
-          url("https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=1200&q=80")
-            center / cover;
-        box-shadow: var(--shadow);
-      }
-
-      .portrait::after {
-        position: absolute;
-        right: 24px;
-        bottom: 22px;
-        width: min(300px, calc(100% - 48px));
-        padding: 18px;
-        border: 1px solid rgba(255, 255, 255, 0.62);
-        border-radius: 8px;
-        background: rgba(255, 250, 240, 0.82);
-        box-shadow: 0 14px 34px rgba(37, 34, 29, 0.14);
-        color: var(--muted);
-        content: "写一点技术，留一点生活，也给长期问题一点耐心。";
-        font-size: 15px;
-      }
-
       section {
-        width: min(1120px, calc(100% - 32px));
-        margin: 0 auto;
-        padding: 54px 0;
+        padding: 46px 0;
+        border-top: 1px solid var(--line);
       }
 
-      .section-title {
+      .section-head {
         display: flex;
-        align-items: end;
+        align-items: baseline;
         justify-content: space-between;
         gap: 24px;
-        margin-bottom: 22px;
+        margin-bottom: 18px;
       }
 
       h2 {
         margin: 0;
-        font-family: Georgia, "Times New Roman", serif;
-        font-size: clamp(30px, 4vw, 48px);
-        line-height: 1.05;
+        font-size: 16px;
+        font-weight: 760;
       }
 
-      .section-title p {
-        max-width: 430px;
+      .section-note {
         margin: 0;
         color: var(--muted);
+        font-size: 14px;
       }
 
       .posts {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 18px;
+        gap: 0;
       }
 
       .post {
         display: grid;
-        min-height: 275px;
-        padding: 22px;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: rgba(255, 250, 240, 0.78);
-        box-shadow: 0 14px 34px rgba(37, 34, 29, 0.07);
+        grid-template-columns: 112px minmax(0, 1fr);
+        gap: 22px;
+        padding: 24px 0;
+        border-top: 1px solid var(--line);
       }
 
-      .post:hover {
-        border-color: rgba(15, 118, 110, 0.5);
-        transform: translateY(-2px);
+      .post:first-child {
+        border-top: 0;
       }
 
-      .post time {
-        color: var(--accent-2);
-        font-size: 13px;
-        font-weight: 750;
-      }
-
-      .post h3 {
-        margin: 16px 0 10px;
-        font-size: 22px;
-        line-height: 1.25;
-      }
-
-      .post p {
-        margin: 0;
+      time {
         color: var(--muted);
+        font-size: 14px;
       }
 
-      .post .tag {
-        align-self: end;
-        width: fit-content;
-        margin-top: 24px;
-        padding: 5px 10px;
-        border-radius: 999px;
-        background: var(--soft);
-        color: var(--accent);
-        font-size: 13px;
-        font-weight: 740;
+      h3 {
+        margin: 0 0 8px;
+        font-size: 20px;
+        font-weight: 720;
+        line-height: 1.35;
       }
 
-      .about {
-        display: grid;
-        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
-        gap: 32px;
-        padding: 34px;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: rgba(255, 250, 240, 0.74);
-      }
-
+      .post p,
       .about p {
         margin: 0;
         color: var(--muted);
       }
 
-      .facts {
-        display: grid;
-        gap: 12px;
+      .post-link {
+        display: block;
       }
 
-      .fact {
-        display: flex;
-        justify-content: space-between;
+      .about {
+        display: grid;
         gap: 18px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid var(--line);
       }
 
-      .fact span:first-child {
-        color: var(--muted);
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 8px;
       }
 
-      .newsletter {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+      .pill {
+        display: inline-flex;
         align-items: center;
-        gap: 24px;
-        padding: 32px;
-        border-radius: 8px;
-        background: #18312f;
-        color: white;
+        min-height: 30px;
+        padding: 0 11px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--soft);
+        color: var(--muted);
+        font-size: 13px;
       }
 
-      .newsletter p {
-        max-width: 620px;
-        margin: 8px 0 0;
-        color: rgba(255, 255, 255, 0.72);
+      .category {
+        display: inline-flex;
+        width: fit-content;
+        margin-bottom: 8px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .category:hover,
+      .pill:hover {
+        color: var(--ink);
       }
 
       footer {
-        width: min(1120px, calc(100% - 32px));
-        margin: 0 auto;
-        padding: 28px 0 46px;
+        padding: 34px 0 54px;
         border-top: 1px solid var(--line);
         color: var(--muted);
         font-size: 14px;
       }
 
-      @media (max-width: 860px) {
-        .nav-inner {
+      @media (max-width: 640px) {
+        .wrap {
+          width: min(100% - 28px, 760px);
+        }
+
+        header {
           align-items: flex-start;
           flex-direction: column;
-          justify-content: center;
-          padding: 14px 0;
           gap: 10px;
         }
 
-        .nav-links {
-          width: 100%;
-          overflow-x: auto;
-          padding-bottom: 2px;
-        }
-
         .hero {
-          padding-top: 56px;
+          padding: 64px 0 52px;
         }
 
-        .hero-layout,
-        .about,
-        .newsletter {
+        .post {
           grid-template-columns: 1fr;
+          gap: 6px;
         }
 
-        .portrait {
-          min-height: 320px;
-        }
-
-        .posts {
-          grid-template-columns: 1fr;
-        }
-
-        .section-title {
+        .section-head {
           align-items: flex-start;
           flex-direction: column;
-        }
-
-        .newsletter {
-          align-items: start;
+          gap: 6px;
         }
       }
     </style>
   </head>
   <body>
-    <div class="page">
-      <header class="nav">
-        <div class="nav-inner">
-          <a class="brand" href="#top" aria-label="回到首页">
-            <span class="brand-mark">B</span>
-            <span>我的博客</span>
-          </a>
-          <nav class="nav-links" aria-label="主要导航">
-            <a href="#posts">文章</a>
-            <a href="#about">关于</a>
-            <a href="#contact">联系</a>
-            <a href="https://github.com/" target="_blank" rel="noreferrer">GitHub</a>
-          </nav>
-        </div>
+    <div class="wrap">
+      <header>
+        <a class="brand" href="#top">Yaw Zhang</a>
+        <nav aria-label="主要导航">
+          <a href="#posts">文章</a>
+          <a href="#categories">分类</a>
+          <a href="#about">关于</a>
+          <a href="https://github.com/YawZhang" target="_blank" rel="noreferrer">GitHub</a>
+        </nav>
       </header>
 
       <main id="top">
-        <section class="hero" aria-labelledby="hero-title">
-          <div class="hero-layout">
-            <div>
-              <span class="eyebrow">Personal Blog</span>
-              <h1 id="hero-title">把想法写下来，让时间帮忙整理。</h1>
-              <p>
-                这里记录我正在学习的技术、读过的书、做过的项目，以及那些值得反复琢磨的日常片段。
-              </p>
-              <div class="actions">
-                <a class="button primary" href="#posts">阅读最新文章</a>
-                <a class="button" href="#about">认识我</a>
+        <div class="hero">
+          <p class="kicker">Personal Blog</p>
+          <h1>记录技术、项目和一些长期问题。</h1>
+          <p class="intro">
+            这里是我的个人博客。内容会尽量保持简洁、清楚、可回看，像一间安静的工作台。
+          </p>
+        </div>
+
+        <section id="posts" aria-labelledby="posts-title">
+          <div class="section-head">
+            <h2 id="posts-title">最新文章</h2>
+            <p class="section-note">持续更新中</p>
+          </div>
+
+          <div class="posts">
+            <article class="post">
+              <time datetime="2026-06-14">2026.06.14</time>
+              <div>
+                <a class="category" href="categories/ios.html">iOS</a>
+                <a class="post-link" href="posts/ios-oc-learning-roadmap.html">
+                  <h3>iOS Objective-C 核心学习能力</h3>
+                  <p>按照技术栈整理 OC / UIKit / 工程化所需掌握的关键能力。</p>
+                </a>
               </div>
-            </div>
-            <div class="portrait" role="img" aria-label="桌面、笔记本和咖啡组成的写作场景"></div>
+            </article>
+
+            <article class="post">
+              <time datetime="2026-06-14">2026.06.14</time>
+              <div>
+                <a class="category" href="categories/life.html">随笔</a>
+                <a class="post-link" href="posts/start-writing.html">
+                  <h3>第一篇博客：为什么我想开始写作</h3>
+                  <p>写下搭建博客的动机，也给未来的自己留下一个清楚的起点。</p>
+                </a>
+              </div>
+            </article>
+
+            <article class="post">
+              <time datetime="2026-06-10">2026.06.10</time>
+              <div>
+                <a class="category" href="categories/project.html">项目</a>
+                <a class="post-link" href="posts/project-to-launch.html">
+                  <h3>一个小项目从想法到上线</h3>
+                  <p>记录需求拆解、界面设计、代码实现和发布过程中值得保留的细节。</p>
+                </a>
+              </div>
+            </article>
+
+            <article class="post">
+              <time datetime="2026-06-01">2026.06.01</time>
+              <div>
+                <a class="category" href="categories/learning.html">学习</a>
+                <a class="post-link" href="posts/learning-system.html">
+                  <h3>我的学习系统：输入、整理和输出</h3>
+                  <p>整理一套低负担的学习流程，让知识变成可以复用的能力。</p>
+                </a>
+              </div>
+            </article>
           </div>
         </section>
 
-        <section id="posts" aria-labelledby="posts-title">
-          <div class="section-title">
-            <h2 id="posts-title">最新文章</h2>
-            <p>把这里替换成你的真实文章标题和摘要；之后也可以拆成多个 Markdown 页面。</p>
+        <section id="categories" aria-labelledby="categories-title">
+          <div class="section-head">
+            <h2 id="categories-title">分类</h2>
+            <p class="section-note">按文章类型浏览</p>
           </div>
-          <div class="posts">
-            <article class="post">
-              <div>
-                <time datetime="2026-06-14">2026.06.14</time>
-                <h3>第一篇博客：为什么我想开始写作</h3>
-                <p>写下搭建博客的动机，也给未来的自己留下一个清楚的起点。</p>
-              </div>
-              <span class="tag">随笔</span>
-            </article>
-            <article class="post">
-              <div>
-                <time datetime="2026-06-10">2026.06.10</time>
-                <h3>一个小项目从想法到上线</h3>
-                <p>记录需求拆解、界面设计、代码实现和发布过程中踩过的坑。</p>
-              </div>
-              <span class="tag">项目</span>
-            </article>
-            <article class="post">
-              <div>
-                <time datetime="2026-06-01">2026.06.01</time>
-                <h3>我的学习系统：输入、整理和输出</h3>
-                <p>整理一套低负担的学习流程，让知识真正变成可以复用的能力。</p>
-              </div>
-              <span class="tag">学习</span>
-            </article>
+          <div class="meta">
+            <a class="pill" href="categories/ios.html">iOS</a>
+            <a class="pill" href="categories/learning.html">学习</a>
+            <a class="pill" href="categories/project.html">项目</a>
+            <a class="pill" href="categories/life.html">随笔</a>
           </div>
         </section>
 
         <section id="about" aria-labelledby="about-title">
-          <div class="about">
-            <div>
-              <h2 id="about-title">关于我</h2>
-            </div>
-            <div>
-              <p>
-                你好，我是一名持续学习和创作的人。这个博客会用来沉淀技术笔记、项目复盘、
-                阅读摘录和生活观察。你可以把这段改成你的职业、兴趣、所在城市，以及你希望别人记住你的关键词。
-              </p>
-              <div class="facts" style="margin-top: 24px">
-                <div class="fact">
-                  <span>关注方向</span>
-                  <strong>技术 / 写作 / 产品</strong>
-                </div>
-                <div class="fact">
-                  <span>当前状态</span>
-                  <strong>持续构建中</strong>
-                </div>
-                <div class="fact">
-                  <span>联系方式</span>
-                  <strong>your-email@example.com</strong>
-                </div>
-              </div>
-            </div>
+          <div class="section-head">
+            <h2 id="about-title">关于</h2>
           </div>
-        </section>
-
-        <section id="contact" aria-labelledby="contact-title">
-          <div class="newsletter">
-            <div>
-              <h2 id="contact-title">保持联系</h2>
-              <p>欢迎通过 GitHub、邮箱或社交媒体找到我。新的文章和项目会优先发布在这里。</p>
+          <div class="about">
+            <p>
+              你好，我是 Yaw Zhang。这个博客用于沉淀技术笔记、项目复盘、阅读摘录和生活观察。
+            </p>
+            <div class="meta">
+              <span class="pill">技术</span>
+              <span class="pill">写作</span>
+              <span class="pill">产品</span>
+              <span class="pill">@YawZhang</span>
             </div>
-            <a class="button primary" href="mailto:your-email@example.com">给我写信</a>
           </div>
         </section>
       </main>
 
-      <footer>
-        <span>© 2026 我的个人博客。Built for GitHub Pages.</span>
-      </footer>
+      <footer>© 2026 Yaw Zhang. Built with GitHub Pages.</footer>
     </div>
   </body>
 </html>
