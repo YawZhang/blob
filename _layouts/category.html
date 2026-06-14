@@ -3,28 +3,36 @@ layout: default
 ---
 
 <main>
-  <article class="page">
-    <h1>{{ page.title }}</h1>
+  <section class="page-title">
+    <span>Category</span>
+    <h1>{{ page.title }} 专栏</h1>
     <p>{{ page.description }}</p>
-  </article>
+  </section>
 
-  <section aria-labelledby="category-posts">
+  <section>
+    {% assign posts = site.categories[page.category_name] %}
     <div class="section-head">
-      <h2 id="category-posts">文章</h2>
-      <p class="section-note">{{ page.category_name }}</p>
+      <div>
+        <h2>全部文章</h2>
+        <p>共 {{ posts | size }} 篇。</p>
+      </div>
     </div>
-    <div class="posts">
-      {% assign posts = site.categories[page.category_name] %}
+    <div class="post-grid">
       {% for post in posts %}
-        <article class="post">
-          <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%Y.%m.%d" }}</time>
-          <a class="post-link" href="{{ post.url | relative_url }}">
-            <h2>{{ post.title }}</h2>
-            <p>{{ post.description }}</p>
+        <article class="post-card">
+          <a href="{{ post.url | relative_url }}">
+            <div class="thumb {{ post.category_slug }}"><span>{{ post.category }}</span></div>
+            <div class="card-body">
+              <div class="meta">
+                <span>{{ post.category }}</span>
+                <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%Y.%m.%d" }}</time>
+              </div>
+              <h2>{{ post.title }}</h2>
+              <p>{{ post.description }}</p>
+            </div>
           </a>
         </article>
       {% endfor %}
     </div>
   </section>
 </main>
-

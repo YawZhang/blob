@@ -2,61 +2,139 @@
 layout: default
 ---
 
-<main id="top">
-  <div class="hero">
-    <p class="kicker">Personal Blog</p>
-    <h1>记录技术、项目和一些长期问题。</h1>
-    <p class="intro">这里是我的个人博客。内容会尽量保持简洁、清楚、可回看，像一间安静的工作台。</p>
-  </div>
+{% assign featured = site.posts | where: "slug", "ios-oc-learning-roadmap" | first %}
+{% unless featured %}
+  {% assign featured = site.posts | first %}
+{% endunless %}
 
-  <section id="posts" aria-labelledby="posts-title">
-    <div class="section-head">
-      <h2 id="posts-title">最新文章</h2>
-      <p class="section-note">持续更新中</p>
+<main>
+  <section class="hero">
+    <div class="hero-copy">
+      <div class="eyebrow">Personal Blog / iOS / Projects</div>
+      <h1>记录技术、项目和持续学习</h1>
+      <p>这里是 Yaw Zhang 的个人博客：写 Objective-C、iOS 学习路线、项目实践，也记录一些长期值得回看的问题。</p>
     </div>
+    <div class="hero-side">
+      <div class="stat-card">
+        <strong>{{ site.posts | size }}</strong>
+        <span>篇文章已经整理进博客。</span>
+      </div>
+      <div class="about-card">
+        <h2>关于这个站点</h2>
+        <p>文章继续使用 Markdown 维护，页面呈现更像一个长期写作的个人网站，而不是单纯的资料库。</p>
+      </div>
+    </div>
+  </section>
 
-    <div class="posts">
-      {% for post in site.posts %}
-        <article class="post">
-          <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%Y.%m.%d" }}</time>
-          <div>
-            <a class="category" href="{{ '/categories/' | append: post.category_slug | append: '/' | relative_url }}">{{ post.category }}</a>
-            <a class="post-link" href="{{ post.url | relative_url }}">
-              <h2>{{ post.title }}</h2>
-              <p>{{ post.description }}</p>
-            </a>
+  <section>
+    <div class="section-head">
+      <div>
+        <h2>精选文章</h2>
+        <p>把核心学习路线放在最醒目的位置，其他文章作为延伸阅读。</p>
+      </div>
+      <a href="{{ '/categories/ios/' | relative_url }}">查看 iOS 专栏</a>
+    </div>
+    <div class="featured-grid">
+      <article class="post-card large">
+        <a href="{{ featured.url | relative_url }}">
+          <div class="thumb {{ featured.category_slug }}"><span>{{ featured.category }}</span></div>
+          <div class="card-body">
+            <div class="meta">
+              <span>{{ featured.category }}</span>
+              <time datetime="{{ featured.date | date_to_xmlschema }}">{{ featured.date | date: "%Y.%m.%d" }}</time>
+            </div>
+            <h2>{{ featured.title }}</h2>
+            <p>{{ featured.description }}</p>
           </div>
-        </article>
+        </a>
+      </article>
+
+      <div class="post-grid single">
+        {% assign side_count = 0 %}
+        {% for post in site.posts %}
+          {% if post.url != featured.url and side_count < 2 %}
+            <article class="post-card">
+              <a href="{{ post.url | relative_url }}">
+                <div class="thumb {{ post.category_slug }}"><span>{{ post.category }}</span></div>
+                <div class="card-body">
+                  <div class="meta">
+                    <span>{{ post.category }}</span>
+                    <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%Y.%m.%d" }}</time>
+                  </div>
+                  <h2>{{ post.title }}</h2>
+                  <p>{{ post.description }}</p>
+                </div>
+              </a>
+            </article>
+            {% assign side_count = side_count | plus: 1 %}
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div>
+        <h2>最新文章</h2>
+        <p>技术、学习、项目和生活都可以自然进入同一个博客结构。</p>
+      </div>
+    </div>
+    <div class="post-grid">
+      {% assign latest_count = 0 %}
+      {% for post in site.posts %}
+        {% if post.url != featured.url and latest_count < 6 %}
+          <article class="post-card">
+            <a href="{{ post.url | relative_url }}">
+              <div class="thumb {{ post.category_slug }}"><span>{{ post.category }}</span></div>
+              <div class="card-body">
+                <div class="meta">
+                  <span>{{ post.category }}</span>
+                  <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%Y.%m.%d" }}</time>
+                </div>
+                <h2>{{ post.title }}</h2>
+                <p>{{ post.description }}</p>
+              </div>
+            </a>
+          </article>
+          {% assign latest_count = latest_count | plus: 1 %}
+        {% endif %}
       {% endfor %}
     </div>
   </section>
 
-  <section id="categories" aria-labelledby="categories-title">
+  <section>
+    {% assign ios_posts = site.posts | where: "category_slug", "ios" %}
+    {% assign learning_posts = site.posts | where: "category_slug", "learning" %}
+    {% assign project_posts = site.posts | where: "category_slug", "project" %}
+    {% assign life_posts = site.posts | where: "category_slug", "life" %}
     <div class="section-head">
-      <h2 id="categories-title">分类</h2>
-      <p class="section-note">按文章类型浏览</p>
-    </div>
-    <div class="meta">
-      <a class="pill" href="{{ '/categories/ios/' | relative_url }}">iOS</a>
-      <a class="pill" href="{{ '/categories/learning/' | relative_url }}">学习</a>
-      <a class="pill" href="{{ '/categories/project/' | relative_url }}">项目</a>
-      <a class="pill" href="{{ '/categories/life/' | relative_url }}">随笔</a>
-    </div>
-  </section>
-
-  <section id="about" aria-labelledby="about-title">
-    <div class="section-head">
-      <h2 id="about-title">关于</h2>
-    </div>
-    <div class="about">
-      <p>你好，我是 Yaw Zhang。这个博客用于沉淀技术笔记、项目复盘、阅读摘录和生活观察。</p>
-      <div class="meta">
-        <span class="pill">技术</span>
-        <span class="pill">写作</span>
-        <span class="pill">产品</span>
-        <span class="pill">@YawZhang</span>
+      <div>
+        <h2>分类入口</h2>
+        <p>保留分类能力，但首页视觉更像个人博客。</p>
       </div>
+    </div>
+    <div class="category-grid">
+      <a class="category-card ios" href="{{ '/categories/ios/' | relative_url }}">
+        <span>iOS</span>
+        <strong>{{ ios_posts | size }}</strong>
+        <p>Objective-C、UIKit、工程化和移动端开发相关笔记。</p>
+      </a>
+      <a class="category-card learning" href="{{ '/categories/learning/' | relative_url }}">
+        <span>学习</span>
+        <strong>{{ learning_posts | size }}</strong>
+        <p>学习方法、知识系统和长期积累。</p>
+      </a>
+      <a class="category-card project" href="{{ '/categories/project/' | relative_url }}">
+        <span>项目</span>
+        <strong>{{ project_posts | size }}</strong>
+        <p>从想法到上线的项目记录。</p>
+      </a>
+      <a class="category-card life" href="{{ '/categories/life/' | relative_url }}">
+        <span>生活</span>
+        <strong>{{ life_posts | size }}</strong>
+        <p>一些普通但值得留下的片段。</p>
+      </a>
     </div>
   </section>
 </main>
-
