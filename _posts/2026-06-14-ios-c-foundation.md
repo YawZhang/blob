@@ -618,34 +618,211 @@ int B_func(int value);
 
 ## 10. 和 iOS 的关系
 
-iOS 开发里，C 基础主要服务于三类场景。
+iOS 开发并不是只写 Objective-C 对象。UIKit、Core Graphics、Core Foundation、Runtime、底层音视频和系统回调里，都能看到 C 的影子。C 基础的价值不是背语法，而是帮助理解这些 API 为什么这样设计。
 
-第一类是理解系统结构体。
+### 系统结构体是值类型
+
+iOS 里很多看起来像“对象”的基础数据，其实是 C 结构体，比如 `CGPoint`、`CGSize`、`CGRect`、`UIEdgeInsets`、`CGAffineTransform`。
 
 ```objective-c
 CGRect frame = CGRectMake(0, 0, 100, 50);
 view.frame = frame;
 ```
 
-`CGRect` 是结构体，不是对象。
+`CGRect` 不是对象，它是结构体。结构体是值类型，赋值时会复制一份数据。
 
-第二类是理解对象指针。
+```objective-c
+CGRect frame1 = CGRectMake(0, 0, 100, 50);
+CGRect frame2 = frame1;
+
+frame2.origin.x = 20;
+
+view.frame = frame1;
+```
+
+这里修改 `frame2` 不会影响 `frame1`。理解这一点，才能明白为什么修改 `view.frame.origin.x` 不能总是直接写成“改对象内部属性”的感觉。更常见的写法是先取出结构体，修改后再整体赋回去。
+
+```objective-c
+CGRect frame = view.frame;
+frame.origin.x = 20;
+view.frame = frame;
+```
+
+这背后不是 UIKit 故意麻烦，而是 `frame` 本身就是一个结构体值。
+
+### Objective-C 对象变量本质是指针
+
+Objective-C 对象通常通过指针访问。
 
 ```objective-c
 NSString *name = @"Yaw";
 UIView *view = [[UIView alloc] init];
 ```
 
-这里的 `*` 表示变量保存的是对象地址。Objective-C 对象通常通过指针访问。
+这里的 `name` 和 `view` 变量保存的不是对象本体，而是对象地址。对象本体在内存中，变量只是指向它。
 
-第三类是读懂底层 C API。
+```objective-c
+UIView *view1 = [[UIView alloc] init];
+UIView *view2 = view1;
+
+view2.backgroundColor = UIColor.redColor;
+```
+
+`view1` 和 `view2` 指向同一个对象，所以通过 `view2` 改背景色，`view1` 看到的也是同一个对象的变化。
+
+这和结构体完全不同：
+
+```objective-c
+CGRect rect1 = CGRectMake(0, 0, 100, 50);
+CGRect rect2 = rect1;
+rect2.origin.x = 20;
+```
+
+`rect1` 和 `rect2` 是两份值；`view1` 和 `view2` 是两个指针，指向同一个对象。理解这个区别，是后面学习内存管理、属性修饰符、引用关系的基础。
+
+### C 函数 API 仍然大量存在
+
+iOS 里不是所有能力都以对象方法出现。很多底层能力仍然是 C 函数。
+
+```objective-c
+CGRect frame = CGRectMake(0, 0, 100, 50);
+CGPoint point = CGPointMake(10, 20);
+CGSize size = CGSizeMake(100, 50);
+```
+
+这些不是 Objective-C 方法调用，而是 C 函数调用。它们返回结构体值。
+
+Core Graphics 里更明显：
+
+```objective-c
+CGContextRef context = UIGraphicsGetCurrentContext();
+CGContextSetFillColorWithColor(context, UIColor.redColor.CGColor);
+CGContextFillRect(context, CGRectMake(0, 0, 100, 100));
+```
+
+这类 API 常见特征是：
+
+- 函数名较长，通常带模块前缀，比如 `CGContext`、`CFString`。
+- 参数经常是结构体、指针或引用类型。
+- 返回值不一定是 Objective-C 对象。
+
+读这类代码时，C 基础比 Objective-C 语法更重要。
+
+### Core Foundation 需要理解桥接和内存语义
+
+Core Foundation 是 C 风格 API，但它和 Objective-C 对象系统可以桥接。
 
 ```objective-c
 CFStringRef cfName = CFSTR("Yaw");
 NSString *name = (__bridge NSString *)cfName;
 ```
 
-Core Foundation 中大量类型和函数来自 C 风格 API。理解指针、类型转换和内存语义，会让这类代码更容易阅读。
+`CFStringRef` 是 Core Foundation 类型，`NSString *` 是 Objective-C 对象指针。`__bridge` 表示只做类型桥接，不转移对象所有权。
+
+更典型的是对象所有权转换：
+
+```objective-c
+CFStringRef cfString = CFStringCreateWithCString(NULL, "Yaw", kCFStringEncodingUTF8);
+NSString *name = CFBridgingRelease(cfString);
+```
+
+`Create` 命名通常表示创建出来的对象需要释放。`CFBridgingRelease` 会把 Core Foundation 对象交给 ARC 管理。这里如果不理解“指针指向对象”和“谁负责释放”，就很难读懂这类代码。
+
+这一部分不要求第一章就掌握 Core Foundation 内存规则，但要知道：iOS 里有些 API 不是纯 Objective-C 风格，底层仍然依赖 C 的类型、指针和所有权约定。
+
+### 枚举和位掩码常用于配置
+
+Objective-C 里常见的 `NS_ENUM` 和 `NS_OPTIONS` 都建立在 C 枚举基础上。
+
+```objective-c
+typedef NS_ENUM(NSInteger, LoginState) {
+    LoginStateLoggedOut,
+    LoginStateLoggingIn,
+    LoginStateLoggedIn
+};
+```
+
+这种枚举表示互斥状态，同一时间通常只能是其中一个。
+
+位掩码用于组合多个选项。
+
+```objective-c
+typedef NS_OPTIONS(NSUInteger, ViewOptions) {
+    ViewOptionShowTitle = 1 << 0,
+    ViewOptionShowIcon  = 1 << 1,
+    ViewOptionSelected  = 1 << 2
+};
+
+ViewOptions options = ViewOptionShowTitle | ViewOptionSelected;
+```
+
+`|` 表示组合选项，`&` 表示检查选项。
+
+```objective-c
+if (options & ViewOptionSelected) {
+    NSLog(@"selected");
+}
+```
+
+很多 UIKit API 都有这种风格，比如动画选项、手势状态、视图自动调整配置等。理解位运算，才能知道为什么一个参数可以同时表达多个开关。
+
+### Block 和回调也离不开 C 的函数思维
+
+Block 是 Objective-C 里的重要语法，但它和 C 的函数指针、回调思想有关系。
+
+```objective-c
+void (^completion)(BOOL finished) = ^(BOOL finished) {
+    NSLog(@"finished: %@", finished ? @"YES" : @"NO");
+};
+
+completion(YES);
+```
+
+Block 可以理解成一段可以被保存、传递、稍后执行的代码。系统 API 经常用它表达异步结果。
+
+```objective-c
+[UIView animateWithDuration:0.25 animations:^{
+    view.alpha = 0;
+} completion:^(BOOL finished) {
+    NSLog(@"animation finished");
+}];
+```
+
+这里的 `completion` 不是马上执行，而是在动画结束后由系统回调。理解函数、参数、回调，有助于理解 Block 为什么能作为参数传进 API。
+
+### Runtime 暴露的是更底层的 C 接口
+
+Objective-C 的 Runtime API 很多都是 C 函数。
+
+```objective-c
+#import <objc/runtime.h>
+
+Class cls = [UIView class];
+unsigned int count = 0;
+objc_property_t *properties = class_copyPropertyList(cls, &count);
+
+free(properties);
+```
+
+这段代码里同时出现了：
+
+- `Class`：Runtime 类型。
+- `unsigned int count`：C 基本类型。
+- `&count`：把地址传给函数，让函数写入属性数量。
+- `objc_property_t *`：指针。
+- `free(properties)`：释放 C API 返回的内存。
+
+这类代码如果没有 C 基础，会很难判断哪些值需要释放、哪些参数是输出参数、哪些类型只是地址。
+
+### 小结
+
+C 基础在 iOS 中主要解决三件事：
+
+- 区分值类型和对象指针，比如 `CGRect` 与 `UIView *`。
+- 读懂 C 风格系统 API，比如 Core Graphics、Core Foundation、Runtime。
+- 理解底层约定，比如宏、枚举、位掩码、回调、桥接和内存释放。
+
+因此，这一章不是为了写纯 C 项目，而是为了让 Objective-C 代码背后的底层模型变得清楚。
 
 ## 掌握标准
 
