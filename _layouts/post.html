@@ -25,10 +25,12 @@ layout: default
 <main class="post-page">
   <div class="post-shell">
     {% if toc_items != '' %}
-      <aside class="toc toc-desktop" aria-label="文章目录">
-        <p class="toc-title">目录</p>
-        <ol>{{ toc_items }}</ol>
-      </aside>
+      <div class="toc-rail">
+        <aside class="toc toc-desktop" aria-label="文章目录">
+          <p class="toc-title">目录</p>
+          <ol>{{ toc_items }}</ol>
+        </aside>
+      </div>
     {% endif %}
 
   <article class="article">

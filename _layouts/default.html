@@ -285,6 +285,10 @@
         justify-content: center;
         min-width: 0;
       }
+      .toc-rail {
+        width: 220px;
+        min-width: 0;
+      }
       .toc {
         position: sticky;
         top: 92px;
@@ -297,8 +301,9 @@
         box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
       }
       .toc-desktop {
-        position: sticky;
+        position: fixed;
         top: 92px;
+        left: max(20px, calc((100vw - 1092px) / 2));
         width: 220px;
         z-index: 10;
       }
@@ -477,6 +482,9 @@
           width: 100%;
           grid-template-columns: minmax(0, 1fr);
           gap: 0;
+        }
+        .toc-rail {
+          display: none;
         }
         .toc-desktop {
           display: none;
